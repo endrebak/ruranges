@@ -3,13 +3,33 @@ use radsort::sort_by_key;
 use crate::ruranges_structs::Interval;
 use crate::ruranges_structs::Event;
 
-pub fn sort_intervals(
+
+pub fn build_intervals(
     chrs: &[i32],
     starts: &[i64],
     ends: &[i64],
     idxs: &[i64],
-) -> Vec<i64> {
+) -> Vec<Interval> {
+    let mut intervals: Vec<Interval> = Vec::with_capacity(chrs.len());
+    for i in 0..chrs.len() {
+        intervals.push(Interval {
+            chr:   chrs[i],
+            start: starts[i],
+            end:   ends[i],
+            idx:   idxs[i],
+        });
+    }
 
+    intervals
+}
+
+
+pub fn build_sorted_intervals(
+    chrs: &[i32],
+    starts: &[i64],
+    ends: &[i64],
+    idxs: &[i64],
+) -> Vec<Interval> {
     let mut intervals: Vec<Interval> = Vec::with_capacity(chrs.len());
     for i in 0..chrs.len() {
         intervals.push(Interval {
@@ -24,7 +44,17 @@ pub fn sort_intervals(
     sort_by_key(&mut intervals, |i| i.start);
     sort_by_key(&mut intervals, |i| i.chr);
 
-    intervals.iter().map(|i| i.idx).collect::<Vec<_>>()
+    intervals
+}
+
+
+pub fn sort_order_idx(
+    chrs: &[i32],
+    starts: &[i64],
+    ends: &[i64],
+    idxs: &[i64],
+) -> Vec<i64> {
+    build_sorted_intervals(chrs, starts, ends, idxs).iter().map(|i| i.idx).collect()
 }
 
 
