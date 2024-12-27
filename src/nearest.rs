@@ -1,5 +1,9 @@
 
-use crate::{ruranges_structs::Interval, sorts::align_interval_collections_on_chromosome};
+use std::time::Instant;
+
+use radsort::sort_by_key;
+
+use crate::{overlaps::{self, sweep_line_overlaps}, ruranges_structs::Interval, sorts::{align_interval_collections_on_chromosome, build_intervals}};
 
 pub fn nearest_next_nonoverlapping_k(
     is1: &mut [Interval], // sorted by .end
@@ -100,16 +104,31 @@ pub fn nearest_previous_nonoverlapping_k(
 
 
 pub fn nearest_nonoverlapping_k(
-    is1: &mut [Interval],
-    is2: &mut [Interval],
+    chrs: &[i32],
+    starts: &[i64],
+    ends: &[i64],
+    idxs: &[i64],
+    chrs2: &[i32],
+    starts2: &[i64],
+    ends2: &[i64],
+    idxs2: &[i64],
     k: usize,
 ) -> (Vec<i64>, Vec<i64>, Vec<i64>) {
+
+    let start = Instant::now();
+    let mut is1 = build_intervals(chrs, starts, ends, idxs);
+    let mut is2 = build_intervals(chrs2, starts2, ends2, idxs2);
+    let duration = start.elapsed();
+    println!("Time elapsed building intervals: {:?}", duration);
 
     let outlen = k * is1.len();
     let mut results_idx1 = Vec::with_capacity(outlen);
     let mut results_idx2 = Vec::with_capacity(outlen);
     let mut results_dist = Vec::with_capacity(outlen);
-    let d = align_interval_collections_on_chromosome(is1, is2);
+    let start = Instant::now();
+    let d = align_interval_collections_on_chromosome(&mut is1, &mut is2);
+    let duration = start.elapsed();
+    println!("Time elapsed aligning chroms: {:?}", duration);
 
     for (_chr, (mut is1, mut is2)) in d {
         let (nn_idx1, nn_idx2, nn_dist) = nearest_next_nonoverlapping_k(&mut is1, &mut is2, k);
@@ -128,5 +147,141 @@ pub fn nearest_nonoverlapping_k(
             }
         }
     }
+    let duration = start.elapsed();
+    println!("Time elapsed finding nearest nonoverlapping intervals: {:?}", duration);
     (results_idx1, results_idx2, results_dist)
+}
+
+
+pub fn nearest_k(
+    chrs: &[i32],
+    starts: &[i64],
+    ends: &[i64],
+    idxs: &[i64],
+    chrs2: &[i32],
+    starts2: &[i64],
+    ends2: &[i64],
+    idxs2: &[i64],
+    k: usize,
+) -> (Vec<i64>, Vec<i64>, Vec<i64>) {
+    let start = Instant::now();
+    let (oidx1, oidx2) = sweep_line_overlaps(
+        chrs,
+        starts,
+        ends,
+        idxs,
+        chrs2,
+        starts2,
+        ends2,
+        idxs2,
+    );
+    let duration = start.elapsed();
+    println!("Time elapsed: {:?}", duration);
+
+    #[derive(Debug, Clone)]
+    struct Triplet {
+        pub idx: i64,
+        pub idx2: i64,
+        pub n: i64,
+    }
+    let start = Instant::now();
+
+    let mut overlaps: Vec<Triplet> = Vec::with_capacity(oidx1.len());
+    for i in 0..oidx1.len() {
+        overlaps.push(Triplet {
+            idx: oidx1[i], idx2: oidx2[i], n: 0,
+        })
+    }
+    sort_by_key(&mut overlaps, |i| i.idx);
+    let duration = start.elapsed();
+    println!("Time elapsed: {:?}", duration);
+
+    let (results_idx1, results_idx2, dist) = nearest_nonoverlapping_k(
+        chrs,
+        starts,
+        ends,
+        idxs,
+        chrs2,
+        starts2,
+        ends2,
+        idxs2,
+        k,
+    );
+
+    let start = Instant::now();
+    let mut nearest: Vec<Triplet> = Vec::with_capacity(results_idx1.len());
+    for i in 0..results_idx1.len() {
+        nearest.push(Triplet {
+            idx: results_idx1[i], idx2: results_idx2[i], n: dist[i],
+        })
+    }
+    let duration = start.elapsed();
+    println!("Time elapsed: {:?}", duration);
+
+
+    sort_by_key(&mut nearest, |i| i.idx);
+    println!("nearests {:?}", &nearest[..nearest.len().min(10)]);
+    println!("overlaps {:?}", &overlaps[..overlaps.len().min(10)]);
+
+    let mut idx1: Vec<i64> = Vec::with_capacity(k * starts.len());
+    let mut idx2: Vec<i64> = Vec::with_capacity(k * starts.len());
+    let mut dists: Vec<i64> = Vec::with_capacity(k * starts.len());
+
+    let start = Instant::now();
+
+    let mut o_i = 0;
+    let mut n_i = 0;
+
+    for query_i in 0..starts.len() {
+        let q_idx = query_i as i64;
+        let mut count = 0;  // count of elements added for this query
+
+        // Find ranges for both overlaps and nearest that match current query
+        let mut o_end = o_i;
+        while o_end < overlaps.len() && overlaps[o_end].idx == q_idx {
+            o_end += 1;
+        }
+
+        let mut n_end = n_i;
+        while n_end < nearest.len() && nearest[n_end].idx == q_idx {
+            n_end += 1;
+        }
+
+        // Two-pointer merge until we have k elements or exhaust both lists
+        while count < k && (o_i < o_end || n_i < n_end) {
+            let take_overlap = if o_i < o_end {
+                if n_i < n_end {
+                    // Both available - take overlap since it's closer
+                    true
+                } else {
+                    // Only overlap available
+                    true
+                }
+            } else {
+                // Only nearest available
+                false
+            };
+
+            if take_overlap {
+                idx1.push(overlaps[o_i].idx);
+                idx2.push(overlaps[o_i].idx2);
+                dists.push(overlaps[o_i].n);
+                o_i += 1;
+            } else {
+                idx1.push(nearest[n_i].idx);
+                idx2.push(nearest[n_i].idx2);
+                dists.push(nearest[n_i].n);
+                n_i += 1;
+            }
+            count += 1;
+        }
+
+        // Advance pointers to start of next query
+        o_i = o_end;
+        n_i = n_end;
+    }
+    let duration = start.elapsed();
+    println!("Time elapsed: {:?}", duration);
+
+    (idx1, idx2, dists)
 }

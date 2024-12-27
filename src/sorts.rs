@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::time::Instant;
 
 use radsort::sort_by_key;
 
@@ -168,9 +169,69 @@ pub fn build_sorted_events(
     // 1. pos (ascending)
     // 2. is_start before is_end (if pos ties)
     // (We don't strictly need to tie-break by set_id or idx, but we can.)
+
+    let start = Instant::now();
+    sort_by_key(&mut events, |e| e.is_start);
+    let duration = start.elapsed();
+    println!("Time elapsed sorting events1: {:?}", duration);
+    sort_by_key(&mut events, |e| e.pos);
+    let duration = start.elapsed();
+    println!("Time elapsed sorting events2: {:?}", duration);
+    sort_by_key(&mut events, |e| e.chr);
+    let duration = start.elapsed();
+    println!("Time elapsed sorting events: {:?}", duration);
+
+    events
+}
+
+
+pub fn build_sorted_events_from_intervals(
+    intervals1: &mut [Interval],
+    intervals2: &mut [Interval],
+) -> Vec<Event> {
+    let mut events: Vec<Event> = Vec::with_capacity(2 * (intervals1.len() + intervals2.len()));
+
+    // Convert set1 intervals into events
+    for interval in intervals1 {
+        events.push(Event {
+            chr: interval.chr,
+            pos: interval.start,
+            is_start: true,
+            first_set: true,
+            idx: interval.idx,
+        });
+        events.push(Event {
+            chr: interval.chr,
+            pos: interval.end,
+            is_start: false,
+            first_set: true,
+            idx: interval.idx,
+        });
+    }
+
+    for interval in intervals2 {
+        events.push(Event {
+            chr: interval.chr,
+            pos: interval.start,
+            is_start: true,
+            first_set: false,
+            idx: interval.idx,
+        });
+        events.push(Event {
+            chr: interval.chr,
+            pos: interval.end,
+            is_start: false,
+            first_set: false,
+            idx: interval.idx,
+        });
+    }
+
+    // Sort events by:
+    // 1. pos (ascending)
+    // 2. is_start before is_end (if pos ties)
+    // (We don't strictly need to tie-break by set_id or idx, but we can.)
     sort_by_key(&mut events, |e| e.is_start);
     sort_by_key(&mut events, |e| e.pos);
-    sort_by_key(&mut events, |e| e.chr);
 
     events
 }
