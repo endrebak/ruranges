@@ -34,22 +34,19 @@ def interval_strategy():
     return st.lists(
         st.tuples(
             st.integers(min_value=0, max_value=1000),
-            st.integers(min_value=0, max_value=1000)
+            st.integers(min_value=0, max_value=1000),
+            st.integers(min_value=0, max_value=5),
         ).map(fix_interval),
         min_size=1,  # at least one interval
         max_size=50  # limit for performance
     )
-
-def call_with_bedtools(bed, bed2):
-    command = "bedtools closest -io -d -a <(cat {}) -b <(cat {})"
-    return command
 
 @given(
     intervals_a=interval_strategy(),
     intervals_b=interval_strategy()
 )
 @settings(
-    max_examples=100,  # Increase or decrease based on desired test thoroughness
+    max_examples=1000,  # Increase or decrease based on desired test thoroughness
     deadline=None       # Sometimes dealing with intervals can be slow; remove Hypothesis deadline
 )
 def test_overlap_algorithms(intervals_a, intervals_b):
@@ -132,7 +129,7 @@ def call_with_bedtools(gr1, gr2):
     gr1.to_bed(tmp1_name)
     gr2.to_bed(tmp2_name)
     # Construct your bedtools command. For example, bedtools closest:
-    command = f"bedtools closest -io -d -a {tmp1_name} -b {tmp2_name}"
+    command = f"bedtools closest -t 'first' -io -d -a {tmp1_name} -b {tmp2_name}"
     try:
         # Run the command and capture the output
         output = subprocess.check_output(command, shell=True)

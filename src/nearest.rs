@@ -1,4 +1,5 @@
-use crate::ruranges_structs::Interval;
+
+use crate::{ruranges_structs::Interval, sorts::align_interval_collections_on_chromosome};
 
 pub fn nearest_next_nonoverlapping_k(
     is1: &mut [Interval], // sorted by .end
@@ -23,7 +24,7 @@ pub fn nearest_next_nonoverlapping_k(
         let x = is1[i].end;
 
         // original_i = the interval's original index in the unsorted array
-        let original_i = is1[i].idx as usize;
+        let original_i = is1[i]._idx as usize;
 
         // Advance j until is2[j].start >= x
         while j < len_r && is2[j].start < x {
@@ -69,7 +70,7 @@ pub fn nearest_previous_nonoverlapping_k(
         let x = is1[i].start;
 
         // original_i = the interval's original index in the unsorted array
-        let original_i = is1[i].idx as usize;
+        let original_i = is1[i]._idx as usize;
 
         // Move j until is2[j].end >= x
         // so all intervals in [0..j) have .end < x
@@ -97,38 +98,34 @@ pub fn nearest_previous_nonoverlapping_k(
 }
 
 
+
 pub fn nearest_nonoverlapping_k(
     is1: &mut [Interval],
     is2: &mut [Interval],
     k: usize,
 ) -> (Vec<i64>, Vec<i64>, Vec<i64>) {
-    let (nn_idx1, nn_idx2, nn_dist) = nearest_next_nonoverlapping_k(is1, is2, k);
-    let (mut np_idx1, mut np_idx2, mut np_dist) = nearest_previous_nonoverlapping_k(is1, is2, k);
-
-    // println!("next {:?}", nn_idx1);
-    // println!("next {:?}", nn_idx2);
-    // println!("next {:?}", nn_dist);
-
-    // println!("prev {:?}", np_idx1);
-    // println!("prev {:?}", np_idx2);
-    // println!("prev {:?}", np_dist);
 
     let outlen = k * is1.len();
-
     let mut results_idx1 = Vec::with_capacity(outlen);
     let mut results_idx2 = Vec::with_capacity(outlen);
     let mut results_dist = Vec::with_capacity(outlen);
-    
-    for i in 0..outlen {
-        if (nn_dist[i] == i64::MAX) & (np_dist[i] == i64::MAX) {
-        } else if nn_dist[i] < np_dist[i] {
-            results_idx1.push(nn_idx1[i]);
-            results_idx2.push(nn_idx2[i]);
-            results_dist.push(nn_dist[i]);
-        } else {
-            results_idx1.push(np_idx1[i]);
-            results_idx2.push(np_idx2[i]);
-            results_dist.push(np_dist[i]);
+    let d = align_interval_collections_on_chromosome(is1, is2);
+
+    for (_chr, (mut is1, mut is2)) in d {
+        let (nn_idx1, nn_idx2, nn_dist) = nearest_next_nonoverlapping_k(&mut is1, &mut is2, k);
+        let (np_idx1, np_idx2, np_dist) = nearest_previous_nonoverlapping_k(&mut is1, &mut is2, k);
+
+        for i in 0..(np_idx1.len()) {
+            if (nn_dist[i] == i64::MAX) & (np_dist[i] == i64::MAX) {
+            } else if nn_dist[i] < np_dist[i] {
+                results_idx1.push(nn_idx1[i]);
+                results_idx2.push(nn_idx2[i]);
+                results_dist.push(nn_dist[i]);
+            } else {
+                results_idx1.push(np_idx1[i]);
+                results_idx2.push(np_idx2[i]);
+                results_dist.push(np_dist[i]);
+            }
         }
     }
     (results_idx1, results_idx2, results_dist)

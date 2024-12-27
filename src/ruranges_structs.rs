@@ -5,6 +5,7 @@ pub struct Interval {
     pub start: i64,
     pub end: i64,
     pub idx: i64,
+    pub _idx: i64,
 }
 
 
