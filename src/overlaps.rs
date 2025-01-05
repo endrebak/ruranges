@@ -2,7 +2,7 @@ use std::time::Instant;
 
 use rustc_hash::FxHashSet;
 
-use crate::{ruranges_structs::Event, sorts};
+use crate::{sorts};
 
 /// Returns all overlapping pairs (idx1, idx2) between intervals in set1 and set2.
 /// This uses a line-sweep / active-set approach.
@@ -24,6 +24,15 @@ pub fn sweep_line_overlaps(
     idxs2: &[i64],
 ) -> (Vec<i64>, Vec<i64>) {
     let start = Instant::now();
+
+    // We'll collect all cross overlaps here
+    let mut overlaps = Vec::new();
+    let mut overlaps2 = Vec::new();
+
+    if chrs.is_empty() | chrs2.is_empty() {
+        return (overlaps, overlaps2);
+    };
+
     let events = sorts::build_sorted_events(
         chrs,
         starts,
@@ -41,12 +50,16 @@ pub fn sweep_line_overlaps(
     let mut active1 = FxHashSet::default();
     let mut active2 = FxHashSet::default();
 
-    // We'll collect all cross overlaps here
-    let mut overlaps = Vec::new();
-    let mut overlaps2 = Vec::new();
+    let mut current_chr: i32 = events.first().unwrap().chr;
 
     // Process events in ascending order of position
     for e in events {
+        if e.chr != current_chr {
+            active1.clear();
+            active2.clear();
+            current_chr = e.chr;
+        }
+
         if e.is_start {
             // Interval is starting
             if e.first_set {

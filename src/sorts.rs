@@ -20,7 +20,6 @@ pub fn build_intervals(
             start: starts[i],
             end:   ends[i],
             idx:   idxs[i],
-            _idx: 0,
         });
     }
 
@@ -61,23 +60,19 @@ fn split_by_chromosome(mut intervals: Vec<Interval>) -> HashMap<i32, Vec<Interva
     }
     sort_by_key(&mut intervals, |i| i.chr);
 
-    let mut k = 0;
     let mut current_chr = intervals.first().unwrap().chr;
     let mut current_group = Vec::new();
 
-    for mut interval in intervals {
+    for interval in intervals {
         if current_chr != interval.chr {
             // We encountered a new chromosome, so store the old group
             result.insert(current_chr, std::mem::take(&mut current_group));
             current_chr = interval.chr;
-            k = 0;
         } else {
             // First interval
             current_chr = interval.chr;
         }
-        interval._idx = k;
         current_group.push(interval);
-        k += 1;
     }
 
     // Push the last group if it exists
