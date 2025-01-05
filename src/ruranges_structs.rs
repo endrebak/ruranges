@@ -1,4 +1,3 @@
-
 #[derive(Debug, Clone)]
 pub struct Interval {
     pub chr: i32,
@@ -6,7 +5,6 @@ pub struct Interval {
     pub end: i64,
     pub idx: i64,
 }
-
 
 /// An "event" in the sweep line:
 /// - `pos`: the coordinate (start or end of an interval)

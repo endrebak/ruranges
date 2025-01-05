@@ -1,9 +1,12 @@
-use std::time::Instant;
+use rustc_hash::{FxHashMap, FxHashSet};
 use std::collections::VecDeque;
-use rustc_hash::{FxHashSet, FxHashMap};
+use std::time::Instant;
 
 // Assume these are your own structures/modules
-use crate::{ruranges_structs::{Nearest, Event}, sorts};
+use crate::{
+    ruranges_structs::{Event, Nearest},
+    sorts,
+};
 
 pub fn sweep_line_k_nearest(
     chrs: &[i32],
@@ -33,10 +36,7 @@ pub fn sweep_line_k_nearest(
     }
 
     // Build combined / sorted event list
-    let events = sorts::build_sorted_events(
-        chrs, starts, ends, idxs,
-        chrs2, starts2, ends2, idxs2
-    );
+    let events = sorts::build_sorted_events(chrs, starts, ends, idxs, chrs2, starts2, ends2, idxs2);
 
     let duration = start.elapsed();
     println!("Time elapsed building events: {:?}", duration);
@@ -73,31 +73,24 @@ pub fn sweep_line_k_nearest(
                 for right_event in right_buffer.iter() {
                     // Instead of pushing directly into overlaps_left/etc.,
                     // accumulate in found_nearest:
-                    found_nearest
-                        .entry(e.idx)
-                        .or_default()
-                        .push(Nearest {
-                            distance: e.pos - right_event.pos + 1,
-                            idx: right_event.idx,
-                        });
+                    found_nearest.entry(e.idx).or_default().push(Nearest {
+                        distance: e.pos - right_event.pos + 1,
+                        idx: right_event.idx,
+                    });
                 }
 
                 if overlaps {
                     // 2) Overlapping logic: all currently active2 intervals
                     for &idx2 in &active2 {
-                        found_nearest
-                            .entry(e.idx)
-                            .or_default()
-                            .push(Nearest {
-                                distance: 0,    // distance=0 for overlaps
-                                idx: idx2,
-                            });
+                        found_nearest.entry(e.idx).or_default().push(Nearest {
+                            distance: 0, // distance=0 for overlaps
+                            idx: idx2,
+                        });
                     }
                 }
 
                 // Mark this left interval as active
                 active1.insert(e.idx);
-
             } else {
                 // -- RIGHT interval is starting --
                 // 1) "k nearest next" logic: for each left interval that
@@ -105,13 +98,10 @@ pub fn sweep_line_k_nearest(
                 if !next_counts.is_empty() {
                     let mut to_remove = Vec::new();
                     for (left_idx, (pos, count_left)) in next_counts.iter_mut() {
-                        found_nearest
-                            .entry(*left_idx)
-                            .or_default()
-                            .push(Nearest {
-                                distance: e.pos - *pos + 1,
-                                idx: e.idx,
-                            });
+                        found_nearest.entry(*left_idx).or_default().push(Nearest {
+                            distance: e.pos - *pos + 1,
+                            idx: e.idx,
+                        });
 
                         // Decrement how many more right starts we pair with
                         *count_left -= 1;
@@ -128,13 +118,10 @@ pub fn sweep_line_k_nearest(
                 if overlaps {
                     // 2) Overlapping logic: all currently active1 intervals
                     for &idx1 in &active1 {
-                        found_nearest
-                            .entry(idx1)
-                            .or_default()
-                            .push(Nearest {
-                                distance: 0,
-                                idx: e.idx,
-                            });
+                        found_nearest.entry(idx1).or_default().push(Nearest {
+                            distance: 0,
+                            idx: e.idx,
+                        });
                     }
                 }
 
@@ -145,7 +132,6 @@ pub fn sweep_line_k_nearest(
                 // because we only track ENDING intervals in right_buffer
                 // for the "k nearest previous" logic.
             }
-
         } else {
             // Interval is ENDING
             if e.first_set {
@@ -155,7 +141,6 @@ pub fn sweep_line_k_nearest(
 
                 // Mark that we want "k nearest next" from the right set
                 next_counts.insert(e.idx, (e.pos, k));
-
             } else {
                 // -- RIGHT interval is ending --
                 // Remove from active2
