@@ -20,7 +20,6 @@ pub fn sweep_line_cluster(
     };
 
     let events = sorts::build_sorted_events_single_collection(chrs, starts, ends, idxs);
-    let duration = start.elapsed();
 
     let mut active1 = FxHashSet::default();
 
@@ -29,6 +28,7 @@ pub fn sweep_line_cluster(
 
     for e in events {
         if e.chr != current_chr {
+            current_cluster += 1;
             active1.clear();
             current_chr = e.chr;
         }
@@ -49,7 +49,7 @@ pub fn sweep_line_cluster(
     }
 
     let duration = start.elapsed();
-    println!("Time elapsed finding overlaps: {:?}", duration);
+    println!("Time elapsed finding clusters: {:?}", duration);
 
     (cluster_ids, indices)
 }

@@ -5,3 +5,4 @@ pub mod numpy_bindings;
 pub mod overlaps;
 pub mod ruranges_structs;
 pub mod sorts;
+pub mod merge;
