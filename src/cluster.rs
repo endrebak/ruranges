@@ -1,14 +1,14 @@
 use std::time::Instant;
 
-use rustc_hash::FxHashSet;
 
 use crate::sorts;
 
 pub fn sweep_line_cluster(
-    chrs: &[i32],
+    chrs: &[i64],
     starts: &[i64],
     ends: &[i64],
     idxs: &[i64],
+    slack: Option<i64>,
 ) -> (Vec<i64>, Vec<i64>) {
     let start = Instant::now();
 
@@ -19,30 +19,31 @@ pub fn sweep_line_cluster(
         return (cluster_ids, indices);
     };
 
-    let events = sorts::build_sorted_events_single_collection(chrs, starts, ends, idxs);
+    let ends_with_slack: Vec<i64> = match slack {
+        Some(s) => ends.iter().map(|&end| end + s).collect(),
+        None    => ends.to_vec(),
+    };
 
-    let mut active1 = FxHashSet::default();
+    let events = sorts::build_sorted_events_single_collection(chrs, starts, &ends_with_slack, idxs);
 
-    let mut current_chr: i32 = events.first().unwrap().chr;
+    let mut current_chr: i64 = events.first().unwrap().chr;
     let mut current_cluster: i64 = 0;
+    let mut active_intervals: i64 = 0;
 
     for e in events {
         if e.chr != current_chr {
             current_cluster += 1;
-            active1.clear();
+            active_intervals = 0;
             current_chr = e.chr;
         }
 
         if e.is_start {
             indices.push(e.idx);
             cluster_ids.push(current_cluster);
-            // Interval is starting
-            // Now add it to active1
-            active1.insert(e.idx);
+            active_intervals += 1;
         } else {
-            // Interval is ending
-            active1.remove(&e.idx);
-            if active1.is_empty() {
+            active_intervals -= 1;
+            if active_intervals == 0 {
                 current_cluster += 1;
             }
         }

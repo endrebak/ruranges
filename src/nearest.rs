@@ -9,11 +9,11 @@ use crate::{
 };
 
 pub fn sweep_line_k_nearest(
-    chrs: &[i32],
+    chrs: &[i64],
     starts: &[i64],
     ends: &[i64],
     idxs: &[i64],
-    chrs2: &[i32],
+    chrs2: &[i64],
     starts2: &[i64],
     ends2: &[i64],
     idxs2: &[i64],
@@ -52,7 +52,7 @@ pub fn sweep_line_k_nearest(
     // left_idx => (end_position_of_left, how_many_right_starts_remaining)
     let mut next_counts: FxHashMap<i64, (i64, usize)> = FxHashMap::default();
 
-    let mut current_chr: i32 = events.first().unwrap().chr;
+    let mut current_chr: i64 = events.first().unwrap().chr;
 
     // -- Process events in ascending order of position --
     for e in events {

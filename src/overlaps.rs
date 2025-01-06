@@ -14,11 +14,11 @@ use crate::sorts;
 ///      record overlap with all active in set2, then insert into active1. Etc.
 ///   4. Return the list of all cross-set overlaps.
 pub fn sweep_line_overlaps(
-    chrs: &[i32],
+    chrs: &[i64],
     starts: &[i64],
     ends: &[i64],
     idxs: &[i64],
-    chrs2: &[i32],
+    chrs2: &[i64],
     starts2: &[i64],
     ends2: &[i64],
     idxs2: &[i64],
@@ -41,7 +41,7 @@ pub fn sweep_line_overlaps(
     let mut active1 = FxHashSet::default();
     let mut active2 = FxHashSet::default();
 
-    let mut current_chr: i32 = events.first().unwrap().chr;
+    let mut current_chr: i64 = events.first().unwrap().chr;
 
     // Process events in ascending order of position
     for e in events {

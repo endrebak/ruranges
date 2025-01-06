@@ -6,11 +6,11 @@ use rustc_hash::FxHashSet;
 use crate::sorts;
 
 pub fn sweep_line_merge(
-    chrs: &[i32],
+    chrs: &[i64],
     starts: &[i64],
     ends: &[i64],
     idxs: &[i64],
-) -> (Vec<i32>, Vec<i64>, Vec<i64>) {
+) -> (Vec<i64>, Vec<i64>, Vec<i64>) {
     let start = Instant::now();
 
     let mut out_chrs = Vec::with_capacity(chrs.len());
@@ -25,7 +25,7 @@ pub fn sweep_line_merge(
 
     let mut active = FxHashSet::default();
 
-    let mut current_chr: i32 = events.first().unwrap().chr;
+    let mut current_chr: i64 = events.first().unwrap().chr;
     let mut current_start: i64 = 0;
 
     for e in events {

@@ -5,8 +5,9 @@ use radsort::sort_by_key;
 
 use crate::ruranges_structs::Event;
 use crate::ruranges_structs::Interval;
+use crate::ruranges_structs::SplicedSubsequenceInterval;
 
-pub fn build_intervals(chrs: &[i32], starts: &[i64], ends: &[i64], idxs: &[i64]) -> Vec<Interval> {
+pub fn build_intervals(chrs: &[i64], starts: &[i64], ends: &[i64], idxs: &[i64]) -> Vec<Interval> {
     let mut intervals: Vec<Interval> = Vec::with_capacity(chrs.len());
     for i in 0..chrs.len() {
         intervals.push(Interval {
@@ -20,8 +21,25 @@ pub fn build_intervals(chrs: &[i32], starts: &[i64], ends: &[i64], idxs: &[i64])
     intervals
 }
 
+pub fn build_subsequence_intervals(chrs: &[i64], starts: &[i64], ends: &[i64], idxs: &[i64], strand_flags: &[bool]) -> Vec<SplicedSubsequenceInterval> {
+    let mut intervals: Vec<SplicedSubsequenceInterval> = Vec::with_capacity(chrs.len());
+    for i in 0..chrs.len() {
+        intervals.push(SplicedSubsequenceInterval {
+            chr: chrs[i],
+            start: if strand_flags[i] { starts[i] } else { - starts[i]},  // so that negative strand intervals are sorted in the correct direction
+            end: if strand_flags[i] { ends[i] } else { - ends[i]},  // we will find the absolute value when using them
+            idx: idxs[i],
+            forward_strand: strand_flags[i],
+            temp_cumsum: 0,
+            temp_length: 0,
+        });
+    }
+
+    intervals
+}
+
 pub fn build_sorted_intervals(
-    chrs: &[i32],
+    chrs: &[i64],
     starts: &[i64],
     ends: &[i64],
     idxs: &[i64],
@@ -35,14 +53,30 @@ pub fn build_sorted_intervals(
     intervals
 }
 
-pub fn sort_order_idx(chrs: &[i32], starts: &[i64], ends: &[i64], idxs: &[i64]) -> Vec<i64> {
+pub fn build_sorted_subsequence_intervals(
+    chrs: &[i64],
+    starts: &[i64],
+    ends: &[i64],
+    idxs: &[i64],
+    strand_flags: &[bool],
+) -> Vec<SplicedSubsequenceInterval> {
+    let mut intervals = build_subsequence_intervals(chrs, starts, ends, idxs, strand_flags);
+
+    sort_by_key(&mut intervals, |i| i.end);
+    sort_by_key(&mut intervals, |i| i.start);
+    sort_by_key(&mut intervals, |i| i.chr);
+
+    intervals
+}
+
+pub fn sort_order_idx(chrs: &[i64], starts: &[i64], ends: &[i64], idxs: &[i64]) -> Vec<i64> {
     build_sorted_intervals(chrs, starts, ends, idxs)
         .iter()
         .map(|i| i.idx)
         .collect()
 }
 
-fn split_by_chromosome(mut intervals: Vec<Interval>) -> HashMap<i32, Vec<Interval>> {
+fn split_by_chromosome(mut intervals: Vec<Interval>) -> HashMap<i64, Vec<Interval>> {
     let mut result = HashMap::new();
     if intervals.len() == 0 {
         return result;
@@ -75,7 +109,7 @@ fn split_by_chromosome(mut intervals: Vec<Interval>) -> HashMap<i32, Vec<Interva
 pub fn align_interval_collections_on_chromosome(
     intervals1: &mut [Interval],
     intervals2: &mut [Interval],
-) -> HashMap<i32, (Vec<Interval>, Vec<Interval>)> {
+) -> HashMap<i64, (Vec<Interval>, Vec<Interval>)> {
     // Group each set of intervals by chromosome.
     let map1 = split_by_chromosome(intervals1.to_vec());
     let map2 = split_by_chromosome(intervals2.to_vec());
@@ -102,7 +136,7 @@ pub fn align_interval_collections_on_chromosome(
 }
 
 pub fn build_sorted_events_single_collection(
-    chrs: &[i32],
+    chrs: &[i64],
     starts: &[i64],
     ends: &[i64],
     idxs: &[i64],
@@ -147,11 +181,11 @@ pub fn build_sorted_events_single_collection(
 }
 
 pub fn build_sorted_events(
-    chrs: &[i32],
+    chrs: &[i64],
     starts: &[i64],
     ends: &[i64],
     idxs: &[i64],
-    chrs2: &[i32],
+    chrs2: &[i64],
     starts2: &[i64],
     ends2: &[i64],
     idxs2: &[i64],

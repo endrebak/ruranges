@@ -6,3 +6,4 @@ pub mod overlaps;
 pub mod ruranges_structs;
 pub mod sorts;
 pub mod merge;
+pub mod spliced_subsequence;

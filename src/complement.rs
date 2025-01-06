@@ -3,11 +3,11 @@ use crate::sorts;
 use rustc_hash::FxHashSet;
 
 pub fn sweep_line_non_overlaps(
-    chrs: &[i32],
+    chrs: &[i64],
     starts: &[i64],
     ends: &[i64],
     idxs: &[i64],
-    chrs2: &[i32],
+    chrs2: &[i64],
     starts2: &[i64],
     ends2: &[i64],
     idxs2: &[i64],
@@ -35,7 +35,7 @@ pub fn sweep_line_non_overlaps(
     let mut active2 = FxHashSet::default();
 
     // Assume the first event determines the “current” chr
-    let mut current_chr: i32 = events.first().unwrap().chr;
+    let mut current_chr: i64 = events.first().unwrap().chr;
 
     for e in events {
         // If chromosome changed, clear active sets
