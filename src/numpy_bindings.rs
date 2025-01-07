@@ -3,6 +3,7 @@ use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 
 use crate::cluster::sweep_line_cluster;
+use crate::merge::sweep_line_merge;
 use crate::nearest;
 use crate::nearest::sweep_line_k_nearest;
 use crate::overlaps;
@@ -121,6 +122,20 @@ pub fn cluster_numpy(
 }
 
 #[pyfunction]
+#[pyo3(signature = (chrs, starts, ends, idxs, slack=None))]
+pub fn merge_numpy(
+    chrs: PyReadonlyArray1<i64>,
+    starts: PyReadonlyArray1<i64>,
+    ends: PyReadonlyArray1<i64>,
+    idxs: PyReadonlyArray1<i64>,
+    slack: Option<i64>,
+    py: Python,
+) -> PyResult<(Py<PyArray1<i64>>, Py<PyArray1<i64>>, Py<PyArray1<i64>>, Py<PyArray1<i64>>)> {
+    let (indices, starts, ends, counts) = sweep_line_merge(chrs.as_slice()?, starts.as_slice()?, ends.as_slice()?, idxs.as_slice()?, slack);
+    Ok((indices.into_pyarray(py).to_owned().into(), starts.into_pyarray(py).to_owned().into(), ends.into_pyarray(py).to_owned().into(), counts.into_pyarray(py).to_owned().into()))
+}
+
+#[pyfunction]
 #[pyo3(signature = (chrs, starts, ends, idxs, strand_flags, start, end = None, force_plus_strand = false))]
 pub fn spliced_subsequence_numpy(
     chrs: PyReadonlyArray1<i64>,
@@ -150,6 +165,7 @@ fn ruranges(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(nearest_intervals_numpy, m)?)?;
     m.add_function(wrap_pyfunction!(cluster_numpy, m)?)?;
     m.add_function(wrap_pyfunction!(spliced_subsequence_numpy, m)?)?;
+    m.add_function(wrap_pyfunction!(merge_numpy, m)?)?;
     // m.add_function(wrap_pyfunction!(nearest_next_intervals_numpy, m)?)?;
     // m.add_function(wrap_pyfunction!(nearest_previous_intervals_numpy, m)?)?;
     Ok(())
