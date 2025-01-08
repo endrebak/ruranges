@@ -22,6 +22,7 @@ pub fn sweep_line_overlaps(
     starts2: &[i64],
     ends2: &[i64],
     idxs2: &[i64],
+    slack: i64,
 ) -> (Vec<i64>, Vec<i64>) {
     let start = Instant::now();
 
@@ -33,7 +34,7 @@ pub fn sweep_line_overlaps(
         return (overlaps, overlaps2);
     };
 
-    let events = sorts::build_sorted_events(chrs, starts, ends, idxs, chrs2, starts2, ends2, idxs2);
+    let events = sorts::build_sorted_events(chrs, starts, ends, idxs, chrs2, starts2, ends2, idxs2, slack);
     let duration = start.elapsed();
     println!("Time elapsed building events: {:?}", duration);
 

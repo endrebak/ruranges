@@ -189,6 +189,7 @@ pub fn build_sorted_events(
     starts2: &[i64],
     ends2: &[i64],
     idxs2: &[i64],
+    slack: i64,
 ) -> Vec<Event> {
     let mut events: Vec<Event> = Vec::with_capacity(2 * (chrs.len() + chrs2.len()));
 
@@ -196,14 +197,14 @@ pub fn build_sorted_events(
     for i in 0..chrs.len() {
         events.push(Event {
             chr: chrs[i],
-            pos: starts[i],
+            pos: starts[i] - slack,
             is_start: true,
             first_set: true,
             idx: idxs[i],
         });
         events.push(Event {
             chr: chrs[i],
-            pos: ends[i],
+            pos: ends[i] + slack,
             is_start: false,
             first_set: true,
             idx: idxs[i],

@@ -21,6 +21,7 @@ pub fn chromsweep_numpy(
     starts2: PyReadonlyArray1<i64>,
     ends2: PyReadonlyArray1<i64>,
     idxs2: PyReadonlyArray1<i64>,
+    slack: i64,
 ) -> PyResult<(Py<PyArray1<i64>>, Py<PyArray1<i64>>)> {
     let chrs_slice = chrs.as_slice()?;
     let starts_slice = starts.as_slice()?;
@@ -40,6 +41,7 @@ pub fn chromsweep_numpy(
         starts_slice2,
         ends_slice2,
         idxs_slice2,
+        slack,
     );
     Ok((
         result.0.into_pyarray(py).to_owned().into(),

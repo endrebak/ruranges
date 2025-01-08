@@ -11,6 +11,7 @@ pub fn sweep_line_non_overlaps(
     starts2: &[i64],
     ends2: &[i64],
     idxs2: &[i64],
+    slack: i64,
 ) -> Vec<i64> {
     use std::time::Instant;
 
@@ -25,7 +26,7 @@ pub fn sweep_line_non_overlaps(
     }
 
     // Build up the event list in ascending order (same as before)
-    let events = sorts::build_sorted_events(chrs, starts, ends, idxs, chrs2, starts2, ends2, idxs2);
+    let events = sorts::build_sorted_events(chrs, starts, ends, idxs, chrs2, starts2, ends2, idxs2, slack);
     println!("Time elapsed building events: {:?}", start.elapsed());
 
     let mut overlapped = FxHashSet::default();

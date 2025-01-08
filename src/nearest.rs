@@ -36,7 +36,7 @@ pub fn sweep_line_k_nearest(
     }
 
     // Build combined / sorted event list
-    let events = sorts::build_sorted_events(chrs, starts, ends, idxs, chrs2, starts2, ends2, idxs2);
+    let events = sorts::build_sorted_events(chrs, starts, ends, idxs, chrs2, starts2, ends2, idxs2, 0);
 
     let duration = start.elapsed();
     println!("Time elapsed building events: {:?}", duration);
