@@ -47,3 +47,13 @@ pub struct SplicedSubsequenceInterval {
     /// Temporary: cumulative sum of lengths within this chrom group.
     pub temp_cumsum: i64,
 }
+
+/// A simple struct to hold each interval's data for "subsequence" logic.
+#[derive(Clone)]
+pub struct SubsequenceInterval {
+    pub group_id: i64,            // grouping ID
+    pub start: i64,          // genomic start
+    pub end: i64,            // genomic end
+    pub idx: i64,            // e.g. row index or something else
+    pub forward_strand: bool // true => + strand, false => - strand
+}

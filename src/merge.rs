@@ -8,7 +8,7 @@ pub fn sweep_line_merge(
     starts: &[i64],
     ends: &[i64],
     idxs: &[i64],
-    slack: Option<i64>,
+    slack: i64,
 ) -> (Vec<i64>, Vec<i64>, Vec<i64>, Vec<i64>) {
     let start = Instant::now();
 
@@ -21,12 +21,7 @@ pub fn sweep_line_merge(
         return (out_indices, out_starts, out_ends, counts);
     };
 
-    let ends_with_slack: Vec<i64> = match slack {
-        Some(s) => ends.iter().map(|&end| end + s).collect(),
-        None    => ends.to_vec(),
-    };
-
-    let events = sorts::build_sorted_events_single_collection(chrs, starts, &ends_with_slack, idxs);
+    let events = sorts::build_sorted_events_single_collection(chrs, starts, ends, idxs, slack);
 
     let mut current_chr: i64 = events.first().unwrap().chr;
     let mut current_start: i64 = 0;

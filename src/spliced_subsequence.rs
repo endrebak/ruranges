@@ -5,14 +5,14 @@ use crate::{
 
 /// Replicates the "spliced_subseq" logic in one pass for intervals sorted by (chrom, start, end).
 ///
-/// - `chrs`: chromosome (encoded) array
-/// - `starts`: genomic start coordinates
-/// - `ends`: genomic end coordinates
-/// - `idxs`: some index array
-/// - `strand_flags`: array of bool indicating forward strand (true) or reverse (false)
-/// - `start`: spliced start (can be negative, to count from the 3' end)
-/// - `end`: spliced end (can be None = unlimited, or negative => 3' offset)
-/// - `force_plus_strand`: if `true`, treat **all** intervals as if forward strand
+/// - chrs: chromosome (encoded) array: actually group ids
+/// - starts: genomic start coordinates
+/// - ends: genomic end coordinates
+/// - idxs: some index array
+/// - strand_flags: array of bool indicating forward strand (true) or reverse (false)
+/// - start: spliced start (can be negative, to count from the 3' end)
+/// - end: spliced end (can be None = unlimited, or negative => 3' offset)
+/// - force_plus_strand: if true, treat **all** intervals as if forward strand
 ///
 /// Returns tuple of (out_idxs, out_starts, out_ends).
 pub fn spliced_subseq(
@@ -47,7 +47,7 @@ pub fn spliced_subseq(
     let mut running_sum = 0_i64;
 
     // This closure finalizes one chrom-group: it applies negative indexing, forward/reverse logic,
-    // filters out intervals with `start >= end`, and pushes results into output vectors.
+    // filters out intervals with start >= end, and pushes results into output vectors.
     let finalize_group = |group: &mut [SplicedSubsequenceInterval],
                           start: i64,
                           end: Option<i64>,
@@ -62,7 +62,7 @@ pub fn spliced_subseq(
         // The total length of this chrom group is the cumsum of the last interval in the group.
         let total_length = group.last().unwrap().temp_cumsum;
 
-        // If end is None, use `total_length`.
+        // If end is None, use total_length.
         let end_val = end.unwrap_or(total_length);
 
         // Convert negative start/end to their positive equivalents from the 3' end:
@@ -83,12 +83,11 @@ pub fn spliced_subseq(
             let cumsum_end = iv.temp_cumsum;                    // spliced end of this exon
 
             // Determine if we use forward or reverse logic:
-            // if `force_plus == true`, always do forward logic
+            // if force_plus == true, always do forward logic
             // otherwise, check iv.forward_strand
             let is_forward = force_plus || iv.forward_strand;
 
             if is_forward {
-                // Forward logic:
                 //   start_adjust = global_start - cumsum_start
                 //   if start_adjust > 0 => shift iv.start right
                 //   end_adjust   = cumsum_end - global_end
@@ -103,8 +102,6 @@ pub fn spliced_subseq(
                     iv.end -= end_adjust;
                 }
             } else {
-                // Reverse logic (mirroring your Python snippet for strand == '-'):
-                //
                 //   start_adjust = global_start - cumsum_start
                 //   if start_adjust > 0 => shift iv.end left
                 //   end_adjust   = cumsum_end - global_end

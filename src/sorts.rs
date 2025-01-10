@@ -6,6 +6,7 @@ use radsort::sort_by_key;
 use crate::ruranges_structs::Event;
 use crate::ruranges_structs::Interval;
 use crate::ruranges_structs::SplicedSubsequenceInterval;
+use crate::ruranges_structs::SubsequenceInterval;
 
 pub fn build_intervals(chrs: &[i64], starts: &[i64], ends: &[i64], idxs: &[i64]) -> Vec<Interval> {
     let mut intervals: Vec<Interval> = Vec::with_capacity(chrs.len());
@@ -32,6 +33,29 @@ pub fn build_subsequence_intervals(chrs: &[i64], starts: &[i64], ends: &[i64], i
             forward_strand: strand_flags[i],
             temp_cumsum: 0,
             temp_length: 0,
+        });
+    }
+
+    intervals
+}
+
+pub fn build_sequence_intervals(
+    chrs: &[i64],
+    starts: &[i64],
+    ends: &[i64],
+    idxs: &[i64],
+    strand_flags: &[bool],
+    force_plus_strand: bool,
+) -> Vec<SubsequenceInterval> {
+
+    let mut intervals: Vec<SubsequenceInterval> = Vec::with_capacity(chrs.len());
+    for i in 0..chrs.len() {
+        intervals.push(SubsequenceInterval {
+            group_id: chrs[i],
+            start: if force_plus_strand || strand_flags[i] { starts[i] } else { - starts[i] },  // so that negative strand intervals are sorted in the correct direction
+            end: if force_plus_strand || strand_flags[i] { ends[i] } else { - ends[i] },  // we will find the absolute value when using them
+            idx: idxs[i],
+            forward_strand: strand_flags[i],
         });
     }
 
@@ -65,6 +89,23 @@ pub fn build_sorted_subsequence_intervals(
     sort_by_key(&mut intervals, |i| i.end);
     sort_by_key(&mut intervals, |i| i.start);
     sort_by_key(&mut intervals, |i| i.chr);
+
+    intervals
+}
+
+pub fn build_sorted_sequence_intervals(
+    chrs: &[i64],
+    starts: &[i64],
+    ends: &[i64],
+    idxs: &[i64],
+    strand_flags: &[bool],
+    force_plus_strand: bool,
+) -> Vec<SubsequenceInterval> {
+    let mut intervals = build_sequence_intervals(chrs, starts, ends, idxs, strand_flags, force_plus_strand);
+
+    sort_by_key(&mut intervals, |i| i.end);
+    sort_by_key(&mut intervals, |i| i.start);
+    sort_by_key(&mut intervals, |i| i.group_id);
 
     intervals
 }
@@ -140,6 +181,7 @@ pub fn build_sorted_events_single_collection(
     starts: &[i64],
     ends: &[i64],
     idxs: &[i64],
+    slack: i64,
 ) -> Vec<Event> {
     let mut events: Vec<Event> = Vec::with_capacity(2 * (chrs.len()));
 
@@ -147,14 +189,14 @@ pub fn build_sorted_events_single_collection(
     for i in 0..chrs.len() {
         events.push(Event {
             chr: chrs[i],
-            pos: starts[i],
+            pos: starts[i] - slack,
             is_start: true,
             first_set: true,
             idx: idxs[i],
         });
         events.push(Event {
             chr: chrs[i],
-            pos: ends[i],
+            pos: ends[i] + slack,
             is_start: false,
             first_set: true,
             idx: idxs[i],

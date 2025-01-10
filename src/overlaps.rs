@@ -24,7 +24,6 @@ pub fn sweep_line_overlaps(
     idxs2: &[i64],
     slack: i64,
 ) -> (Vec<i64>, Vec<i64>) {
-    let start = Instant::now();
 
     // We'll collect all cross overlaps here
     let mut overlaps = Vec::new();
@@ -35,8 +34,6 @@ pub fn sweep_line_overlaps(
     };
 
     let events = sorts::build_sorted_events(chrs, starts, ends, idxs, chrs2, starts2, ends2, idxs2, slack);
-    let duration = start.elapsed();
-    println!("Time elapsed building events: {:?}", duration);
 
     // Active sets
     let mut active1 = FxHashSet::default();
@@ -80,9 +77,6 @@ pub fn sweep_line_overlaps(
             }
         }
     }
-
-    let duration = start.elapsed();
-    println!("Time elapsed finding overlaps: {:?}", duration);
 
     (overlaps, overlaps2)
 }
