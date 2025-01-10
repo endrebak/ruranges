@@ -5,6 +5,7 @@ use pyo3::types::PyTuple;
 use pyo3::wrap_pyfunction;
 use rustc_hash::FxHashMap;
 
+use crate::boundary::sweep_line_boundary;
 use crate::cluster::sweep_line_cluster;
 use crate::complement;
 use crate::complement::sweep_line_non_overlaps;
@@ -197,6 +198,7 @@ fn ruranges(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(nearest_intervals_numpy, m)?)?;
     m.add_function(wrap_pyfunction!(cluster_numpy, m)?)?;
     m.add_function(wrap_pyfunction!(complement_numpy, m)?)?;
+    m.add_function(wrap_pyfunction!(boundary_numpy, m)?)?;
 //     m.add_function(wrap_pyfunction!(subsequence_numpy, m)?)?;
     m.add_function(wrap_pyfunction!(spliced_subsequence_numpy, m)?)?;
     m.add_function(wrap_pyfunction!(merge_numpy, m)?)?;
@@ -289,6 +291,35 @@ pub fn complement_numpy(
             outstarts.into_pyarray(py).to_owned().into(),
             outends.into_pyarray(py).to_owned().into(),
             outidxs.into_pyarray(py).to_owned().into()
+        )
+    )
+}
+
+#[pyfunction]
+pub fn boundary_numpy(
+    py: Python,
+    chrs: PyReadonlyArray1<i64>,
+    starts: PyReadonlyArray1<i64>,
+    ends: PyReadonlyArray1<i64>,
+    idxs: PyReadonlyArray1<i64>,
+) -> PyResult<(Py<PyArray1<i64>>, Py<PyArray1<i64>>, Py<PyArray1<i64>>, Py<PyArray1<i64>>)> {
+    let chrs_slice = chrs.as_slice()?;
+    let starts_slice = starts.as_slice()?;
+    let ends_slice = ends.as_slice()?;
+    let idxs_slice = idxs.as_slice()?;
+
+    let (outidxs, outstarts, outends, counts) = sweep_line_boundary(
+        chrs_slice,
+        starts_slice,
+        ends_slice,
+        idxs_slice,
+    );
+    Ok(
+        (
+            outidxs.into_pyarray(py).to_owned().into(),
+            outstarts.into_pyarray(py).to_owned().into(),
+            outends.into_pyarray(py).to_owned().into(),
+            counts.into_pyarray(py).to_owned().into()
         )
     )
 }

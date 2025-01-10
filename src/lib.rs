@@ -8,3 +8,4 @@ pub mod sorts;
 pub mod merge;
 pub mod spliced_subsequence;
 pub mod complement_single;
+pub mod boundary;
