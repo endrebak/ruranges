@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::time::Instant;
 
 use radsort::sort_by_key;
 
@@ -176,6 +175,42 @@ pub fn align_interval_collections_on_chromosome(
     result
 }
 
+
+pub fn build_sorted_events_single_position(
+    chrs: &[i64],
+    pos: &[i64],
+    idxs: &[i64],
+    start: bool,
+    first_set: bool,
+    negative_position: bool,
+    slack: i64,
+) -> Vec<Event> {
+    let mut events: Vec<Event> = Vec::with_capacity(2 * (chrs.len()));
+
+    // Convert set1 intervals into events
+    for i in 0..chrs.len() {
+        let pos = if start {pos[i] - slack} else {pos[i] + slack};
+        events.push(Event {
+            chr: chrs[i],
+            pos: if negative_position {-pos} else {pos},
+            is_start: start,
+            first_set: first_set,
+            idx: idxs[i],
+        });
+    }
+
+    // Sort events by:
+    // 1. pos (ascending)
+    // 2. is_start before is_end (if pos ties)
+    // (We don't strictly need to tie-break by set_id or idx, but we can.)
+
+    sort_by_key(&mut events, |e| e.is_start);
+    sort_by_key(&mut events, |e| e.pos);
+    sort_by_key(&mut events, |e| e.chr);
+
+    events
+}
+
 pub fn build_sorted_events_single_collection(
     chrs: &[i64],
     starts: &[i64],
@@ -208,16 +243,9 @@ pub fn build_sorted_events_single_collection(
     // 2. is_start before is_end (if pos ties)
     // (We don't strictly need to tie-break by set_id or idx, but we can.)
 
-    let start = Instant::now();
     sort_by_key(&mut events, |e| e.is_start);
-    let duration = start.elapsed();
-    println!("Time elapsed sorting events1: {:?}", duration);
     sort_by_key(&mut events, |e| e.pos);
-    let duration = start.elapsed();
-    println!("Time elapsed sorting events2: {:?}", duration);
     sort_by_key(&mut events, |e| e.chr);
-    let duration = start.elapsed();
-    println!("Time elapsed sorting events: {:?}", duration);
 
     events
 }
@@ -275,16 +303,9 @@ pub fn build_sorted_events(
     // 2. is_start before is_end (if pos ties)
     // (We don't strictly need to tie-break by set_id or idx, but we can.)
 
-    let start = Instant::now();
     sort_by_key(&mut events, |e| e.is_start);
-    let duration = start.elapsed();
-    println!("Time elapsed sorting events1: {:?}", duration);
     sort_by_key(&mut events, |e| e.pos);
-    let duration = start.elapsed();
-    println!("Time elapsed sorting events2: {:?}", duration);
     sort_by_key(&mut events, |e| e.chr);
-    let duration = start.elapsed();
-    println!("Time elapsed sorting events: {:?}", duration);
 
     events
 }

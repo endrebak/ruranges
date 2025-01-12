@@ -24,6 +24,7 @@ pub struct Event {
 pub struct Nearest {
     pub distance: i64,
     pub idx: i64,
+    pub idx2: i64,
 }
 
 #[derive(Debug, Clone)]

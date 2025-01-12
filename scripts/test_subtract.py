@@ -25,12 +25,13 @@ df2.columns = ["Chromosome", "Start", "End"]
 df = pr.PyRanges(df).sort_ranges().reset_index(drop=True)
 df2 = pr.PyRanges(df2).sort_ranges().reset_index(drop=True)
 
-start = time()
 # df = pd.DataFrame(df.loci["chr19", 5992080:5992475])
 # df2 = pd.DataFrame(df2.loci["chr19", 5000000:6000000])
 
-print(df)
+print(df.head(10))
+print(df2.head(10))
 
+start = time()
 combined = pd.concat([df['Chromosome'], df2['Chromosome']], ignore_index=True)
 
 factorized, unique_vals = pd.factorize(combined)
@@ -42,7 +43,9 @@ df2['Chromosome2'] = factorized[df_len:]
 # Factorize it => factorized is a NumPy array of the codes; unique_vals is an Index of unique chroms
 factorized, unique_vals = pd.factorize(combined)
 
-idx1, idx2, dist = ruranges.nearest_intervals_numpy(
+print(df.Chromosome)
+
+idx1, starts, ends = ruranges.subtract_numpy(
     chrs=df.Chromosome2.to_numpy(),
     starts=df.Start.to_numpy(),
     ends=df.End.to_numpy(),
@@ -51,26 +54,21 @@ idx1, idx2, dist = ruranges.nearest_intervals_numpy(
     starts2=df2.Start.to_numpy(),
     ends2=df2.End.to_numpy(),
     idxs2=df2.index.to_numpy(),
-    k=4,
-    overlaps=True,
 )
 end = time()
 print("time nearest", end - start)
 
-ignore_mask = ~((idx1 == -1) | (idx2 == -1))
-
-temp_df1 = df.take(idx1[ignore_mask])
-temp_df2 = df2.take(idx2[ignore_mask])
+temp_df1 = df.take(idx1)
 
 final_df = pd.DataFrame({
-    "chr_left":  temp_df1["Chromosome2"].values,
-    "start_left": temp_df1["Start"].values,
-    "end_left":   temp_df1["End"].values,
-    "chr_right":  temp_df2["Chromosome2"].values,
-    "start_right": temp_df2["Start"].values,
-    "end_right":   temp_df2["End"].values,
-    "distance":    dist[ignore_mask],
-})
+    "chr_left":  temp_df1["Chromosome"].values,
+    "start_left": starts,
+    "end_left":   ends,
+}, index=idx1)
+
+print(final_df)
+print("time total nearest", time() - start)
+raise
 
 # final_df.to_csv("nearest.csv", index=False)
 
@@ -84,7 +82,6 @@ final_df = pd.DataFrame({
 print(final_df)
 
 print("total time nearest", time() - start)
-raise
 
 start = time()
 idx = ruranges.sort_intervals_numpy(
