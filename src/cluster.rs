@@ -1,4 +1,3 @@
-use std::time::Instant;
 
 
 use crate::sorts;
@@ -10,7 +9,6 @@ pub fn sweep_line_cluster(
     idxs: &[i64],
     slack: i64,
 ) -> (Vec<i64>, Vec<i64>) {
-    let start = Instant::now();
 
     let mut indices = Vec::with_capacity(chrs.len());
     let mut cluster_ids = Vec::with_capacity(chrs.len());
@@ -43,9 +41,6 @@ pub fn sweep_line_cluster(
             }
         }
     }
-
-    let duration = start.elapsed();
-    println!("Time elapsed finding clusters: {:?}", duration);
 
     (cluster_ids, indices)
 }

@@ -217,7 +217,7 @@ pub fn build_sorted_events_single_collection(
     for i in 0..chrs.len() {
         events.push(Event {
             chr: chrs[i],
-            pos: starts[i] - slack,
+            pos: starts[i],
             is_start: true,
             first_set: true,
             idx: idxs[i],
