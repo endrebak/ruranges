@@ -199,14 +199,7 @@ pub fn build_sorted_events_single_position(
         });
     }
 
-    // Sort events by:
-    // 1. pos (ascending)
-    // 2. is_start before is_end (if pos ties)
-    // (We don't strictly need to tie-break by set_id or idx, but we can.)
-
-    sort_by_key(&mut events, |e| e.is_start);
-    sort_by_key(&mut events, |e| e.pos);
-    sort_by_key(&mut events, |e| e.chr);
+    sort_by_key(&mut events, |e| (e.chr, e.pos, e.is_start));
 
     events
 }
@@ -303,9 +296,9 @@ pub fn build_sorted_events(
     // 2. is_start before is_end (if pos ties)
     // (We don't strictly need to tie-break by set_id or idx, but we can.)
 
-    sort_by_key(&mut events, |e| e.is_start);
-    sort_by_key(&mut events, |e| e.pos);
-    sort_by_key(&mut events, |e| e.chr);
+    // sort_by_key(&mut events, |e| e.is_start);
+    // sort_by_key(&mut events, |e| e.pos);
+    sort_by_key(&mut events, |e| (e.chr, e.pos, e.is_start));
 
     events
 }

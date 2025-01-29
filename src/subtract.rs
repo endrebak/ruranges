@@ -84,9 +84,11 @@ pub fn sweep_line_subtract(
                 // If we have been capturing a sub-interval for this idx, close it
                 if let Some(start_pos) = active1.get(&e.idx).cloned().unwrap_or(None) {
                     // We are capturing. End the sub-interval at e.pos
-                    result_idxs.push(e.idx);
-                    result_starts.push(start_pos);
-                    result_ends.push(pos);
+                    if start_pos < pos {
+                        result_idxs.push(e.idx);
+                        result_starts.push(start_pos);
+                        result_ends.push(pos);
+                    }
                 }
                 // Remove it from active1
                 active1.remove(&e.idx);
@@ -104,9 +106,11 @@ pub fn sweep_line_subtract(
                     for (&idx1, &maybe_start) in active1.iter() {
                         if let Some(start_pos) = maybe_start {
                             // Close at current event pos (exclusive or inclusive depends on your semantics)
-                            result_idxs.push(idx1);
-                            result_starts.push(start_pos);
-                            result_ends.push(pos);
+                            if start_pos < pos {
+                                result_idxs.push(idx1);
+                                result_starts.push(start_pos);
+                                result_ends.push(pos);
+                            }
                         }
                     }
                     // Now, set them all to None, since we cannot capture while set2 is active

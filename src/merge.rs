@@ -1,5 +1,4 @@
 
-use std::time::Instant;
 
 use crate::sorts;
 
@@ -10,7 +9,6 @@ pub fn sweep_line_merge(
     idxs: &[i64],
     slack: i64,
 ) -> (Vec<i64>, Vec<i64>, Vec<i64>, Vec<i64>) {
-    let start = Instant::now();
 
     let mut out_indices = Vec::with_capacity(chrs.len());
     let mut out_starts = Vec::with_capacity(chrs.len());
@@ -53,9 +51,6 @@ pub fn sweep_line_merge(
             }
         }
     }
-
-    let duration = start.elapsed();
-    println!("Time elapsed merging: {:?}", duration);
 
     (out_indices, out_starts, out_ends, counts)
 }

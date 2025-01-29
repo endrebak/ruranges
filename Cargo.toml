@@ -15,3 +15,8 @@ rustc-hash = "2.1.0"
 numpy = "0.23"
 natord = "1.0"
 rayon = "1.8"
+
+# [profile.release]
+# lto = true
+# opt-level = 3
+# codegen-units = 1
