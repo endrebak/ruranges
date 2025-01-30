@@ -216,7 +216,7 @@ pub fn nearest_intervals_numpy(
             &o_idxs1,
             &o_idxs2,
             &dists,
-            k + 1,
+            k,
         )
     } else {
         (_out_idx1, _out_idx2, _out_dists)
