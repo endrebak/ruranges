@@ -6,12 +6,17 @@ import polars as pl
 import pyranges as pr
 import ruranges
 
+
 def factorize_across_columns(df, columns):
     return df.groupby(columns).ngroup()
 
 
 start = time()
-df = pl.read_csv("/Users/endrebakkenstovner/benchmark_pyranges/downloads/generated/annotation/hg38/10_000_000/1000.bed", separator="\t", has_header=False).to_pandas()
+df = pl.read_csv(
+    "/Users/endrebakkenstovner/benchmark_pyranges/downloads/generated/annotation/hg38/10_000_000/1000.bed",
+    separator="\t",
+    has_header=False,
+).to_pandas()
 df.columns = ["Chromosome", "Start", "End"]
 
 df = pr.PyRanges(df)

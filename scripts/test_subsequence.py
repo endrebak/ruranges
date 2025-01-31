@@ -6,19 +6,25 @@ import polars as pl
 import pyranges as pr
 import ruranges
 
+
 def factorize_across_columns(df, columns):
     return df.groupby(columns).ngroup()
 
-p  = pr.PyRanges({"Chromosome": [1, 1, 2, 2, 3],
-                  "Strand": ["+", "+", "-", "-", "+"],
-                  "Start": [1, 40, 10, 70, 140],
-                  "End": [11, 60, 25, 80, 152],
-                  "transcript_id":["t1", "t1", "t2", "t2", "t3"] })
+
+p = pr.PyRanges(
+    {
+        "Chromosome": [1, 1, 2, 2, 3],
+        "Strand": ["+", "+", "-", "-", "+"],
+        "Start": [1, 40, 10, 70, 140],
+        "End": [11, 60, 25, 80, 152],
+        "transcript_id": ["t1", "t1", "t2", "t2", "t3"],
+    }
+)
 
 print(p)
 
-def ss(df, col, start, end):
 
+def ss(df, col, start, end):
     gids = factorize_across_columns(df, ["Chromosome", col])
     strands = df.Strand.replace({"+": True, "-": False}).astype(bool).values
     print(strands)
@@ -31,17 +37,23 @@ def ss(df, col, start, end):
         start=start,
         end=end,
     )
-    
+
     df_temp = df.reindex(idx)
     df_temp.loc[:, "Start"] = starts
     df_temp.loc[:, "End"] = ends
     return df_temp
 
+
 res = ss(p, "transcript_id", 3, -3)
 print(res)
 
 start = time()
-df = pl.read_csv("/Users/endrebakkenstovner/benchmark_pyranges/downloads/gencode/annotation.bed", separator="\t", has_header=True, infer_schema_length=10000).to_pandas()
+df = pl.read_csv(
+    "/Users/endrebakkenstovner/benchmark_pyranges/downloads/gencode/annotation.bed",
+    separator="\t",
+    has_header=True,
+    infer_schema_length=10000,
+).to_pandas()
 df = df[["Chromosome", "Start", "End", "Feature", "Strand", "gene_id", "transcript_id"]]
 
 df = df[df.Feature == "exon"]

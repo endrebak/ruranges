@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use rayon::scope;
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::prelude::*;
@@ -112,6 +114,7 @@ pub fn sort_intervals_numpy(
     Ok(indexes.into_pyarray(py).to_owned().into())
 }
 
+
 #[pyfunction]
 pub fn nearest_intervals_numpy(
     chrs: PyReadonlyArray1<i64>,
@@ -124,8 +127,11 @@ pub fn nearest_intervals_numpy(
     idxs2: PyReadonlyArray1<i64>,
     k: usize,
     overlaps: bool,
+    direction: &str,
     py: Python,
 ) -> PyResult<(Py<PyArray1<i64>>, Py<PyArray1<i64>>, Py<PyArray1<i64>>)> {
+    let dir: Direction = direction.parse().expect("Invalid direction, must be forward, backwards, or any.");
+
     let chrs_slice = chrs.as_slice()?;
     let starts_slice = starts.as_slice()?;
     let ends_slice = ends.as_slice()?;
@@ -135,41 +141,44 @@ pub fn nearest_intervals_numpy(
     let ends_slice2 = ends2.as_slice()?;
     let idxs_slice2 = idxs2.as_slice()?;
 
-    let mut right_result = None;
-    let mut left_result: Option<(Vec<i64>, Vec<i64>, Vec<i64>)> = None;
+    let mut right_result = Some((Vec::new(), Vec::new(), Vec::new()));
+    let mut left_result = Some((Vec::new(), Vec::new(), Vec::new()));
     let mut overlap_result: Option<(Vec<i64>, Vec<i64>)> = None;
 
     rayon::scope(|s| {
         let right_ref = &mut right_result;
         let left_ref = &mut left_result;
         let overlap_ref = &mut overlap_result;
-
-        s.spawn(|_| {
-            let tmp = sweep_line_k_nearest(
-                chrs_slice,
-                ends_slice,
-                idxs_slice,
-                chrs_slice2,
-                starts_slice2,
-                idxs_slice2,
-                false,
-                k,
-            );
-            *left_ref = Some(tmp);
-        });
-        s.spawn(|_| {
-            let tmp = sweep_line_k_nearest(
-                chrs_slice,
-                starts_slice,
-                idxs_slice,
-                chrs_slice2,
-                ends_slice2,
-                idxs_slice2,
-                true,
-                k,
-            );
-            *right_ref = Some(tmp);
-        });
+        if dir != Direction::Forward {
+            s.spawn(|_| {
+                let tmp = sweep_line_k_nearest(
+                    chrs_slice,
+                    ends_slice,
+                    idxs_slice,
+                    chrs_slice2,
+                    starts_slice2,
+                    idxs_slice2,
+                    false,
+                    k,
+                );
+                *left_ref = Some(tmp);
+            });
+        }
+        if dir != Direction::Backward {
+            s.spawn(|_| {
+                let tmp = sweep_line_k_nearest(
+                    chrs_slice,
+                    starts_slice,
+                    idxs_slice,
+                    chrs_slice2,
+                    ends_slice2,
+                    idxs_slice2,
+                    true,
+                    k,
+                );
+                *right_ref = Some(tmp);
+            });
+        }
         if overlaps {
             s.spawn(|_| {
                         let tmp_overlap = sweep_line_overlaps(
@@ -203,12 +212,6 @@ pub fn nearest_intervals_numpy(
     let (out_idx1, out_idx2, out_dists) = if overlaps {
         let (o_idxs1, o_idxs2) = overlap_result.unwrap();
         let dists = vec![0; o_idxs1.len()];
-        print_vec_info("_out_idx1", &_out_idx1);
-        print_vec_info("_out_idx2", &_out_idx2);
-        print_vec_info("_out_dists", &_out_dists);
-        print_vec_info("o_idxs1", &o_idxs1);
-        print_vec_info("o_idxs2", &o_idxs2);
-        print_vec_info("dists", &dists);
         pick_k_distances_combined(
             &_out_idx1,
             &_out_idx2,
@@ -227,10 +230,6 @@ pub fn nearest_intervals_numpy(
         out_idx2.into_pyarray(py).to_owned().into(),
         out_dists.into_pyarray(py).to_owned().into(),
     ))
-}
-fn print_vec_info(name: &str, data: &Vec<i64>) {
-    println!("{} length: {}", name, data.len());
-    println!("{} first 10: {:?}", name, &data[..data.len().min(10)]);
 }
 
 
@@ -441,4 +440,24 @@ pub fn boundary_numpy(
             counts.into_pyarray(py).to_owned().into()
         )
     )
+}
+
+#[derive(Debug, PartialEq)]
+enum Direction {
+    Forward,
+    Backward,
+    Any,
+}
+
+impl FromStr for Direction {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "forward" => Ok(Direction::Forward),
+            "backward" => Ok(Direction::Backward),
+            "any" => Ok(Direction::Any),
+            _ => Err(format!("Invalid direction: {}", s)),
+        }
+    }
 }

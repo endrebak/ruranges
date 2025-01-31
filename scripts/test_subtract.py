@@ -11,8 +11,16 @@ import polars as pl
 start = time()
 # df = pl.read_csv("/Users/endrebakkenstovner/benchmark_pyranges/downloads/generated/annotation/hg38/10_000_000/1000.bed", separator="\t", has_header=False).to_pandas()
 # df2 = pl.read_csv("/Users/endrebakkenstovner/benchmark_pyranges/downloads/generated/reads/hg38/10_000_000/1000.bed", separator="\t", has_header=False).to_pandas()
-df = pl.read_csv("/Users/endrebakkenstovner/benchmark_pyranges/downloads/generated/annotation/hg38/10_000_000/1000.bed", separator="\t", has_header=False).to_pandas()
-df2 = pl.read_csv("/Users/endrebakkenstovner/benchmark_pyranges/downloads/generated/reads/hg38/10_000_000/1000.bed", separator="\t", has_header=False).to_pandas()
+df = pl.read_csv(
+    "/Users/endrebakkenstovner/benchmark_pyranges/downloads/generated/annotation/hg38/10_000_000/1000.bed",
+    separator="\t",
+    has_header=False,
+).to_pandas()
+df2 = pl.read_csv(
+    "/Users/endrebakkenstovner/benchmark_pyranges/downloads/generated/reads/hg38/10_000_000/1000.bed",
+    separator="\t",
+    has_header=False,
+).to_pandas()
 # df = pd.read_csv("/Users/endrebakkenstovner/benchmark_pyranges/downloads/generated/annotation/hg38/10_000_000/1000.bed", sep="\t")
 # df2 = pd.read_csv("/Users/endrebakkenstovner/benchmark_pyranges/downloads/generated/reads/hg38/10_000_000/1000.bed", sep="\t")
 end = time()
@@ -32,13 +40,13 @@ print(df.head(10))
 print(df2.head(10))
 
 start = time()
-combined = pd.concat([df['Chromosome'], df2['Chromosome']], ignore_index=True)
+combined = pd.concat([df["Chromosome"], df2["Chromosome"]], ignore_index=True)
 
 factorized, unique_vals = pd.factorize(combined)
 
 df_len = len(df)
-df['Chromosome2']  = factorized[:df_len]
-df2['Chromosome2'] = factorized[df_len:]
+df["Chromosome2"] = factorized[:df_len]
+df2["Chromosome2"] = factorized[df_len:]
 
 # Factorize it => factorized is a NumPy array of the codes; unique_vals is an Index of unique chroms
 factorized, unique_vals = pd.factorize(combined)
@@ -60,11 +68,14 @@ print("time nearest", end - start)
 
 temp_df1 = df.take(idx1)
 
-final_df = pd.DataFrame({
-    "chr_left":  temp_df1["Chromosome"].values,
-    "start_left": starts,
-    "end_left":   ends,
-}, index=idx1)
+final_df = pd.DataFrame(
+    {
+        "chr_left": temp_df1["Chromosome"].values,
+        "start_left": starts,
+        "end_left": ends,
+    },
+    index=idx1,
+)
 
 print(final_df)
 print("time total nearest", time() - start)
@@ -118,7 +129,7 @@ print(len(dist))
 #     ends2=df2.End.to_numpy(),
 #     idxs2=df2.index.to_numpy(),
 # )
-# 
+#
 # end = time()
 # print(end - start)
 # print(d)
@@ -140,15 +151,15 @@ df2["Chromosome"] = 1
 start = time()
 
 
-combined = pd.concat([df['Chromosome'], df2['Chromosome']], ignore_index=True)
+combined = pd.concat([df["Chromosome"], df2["Chromosome"]], ignore_index=True)
 
 # Factorize it => factorized is a NumPy array of the codes; unique_vals is an Index of unique chroms
 factorized, unique_vals = pd.factorize(combined)
 
 # Split those codes back into df and df2
 df_len = len(df)
-df['Chromosome']  = factorized[:df_len]
-df2['Chromosome'] = factorized[df_len:]
+df["Chromosome"] = factorized[:df_len]
+df2["Chromosome"] = factorized[df_len:]
 print(df)
 print(df2)
 
@@ -168,7 +179,11 @@ print(dist[:10], dist[-10:])
 
 ignore_mask = ~((idx1 == -1) | (idx2 == -1))
 
-res1, res2, dist = df.loc[idx1[ignore_mask]].reset_index(drop=True), df2.loc[idx2[ignore_mask]].reset_index(drop=True), pd.Series(dist[ignore_mask])
+res1, res2, dist = (
+    df.loc[idx1[ignore_mask]].reset_index(drop=True),
+    df2.loc[idx2[ignore_mask]].reset_index(drop=True),
+    pd.Series(dist[ignore_mask]),
+)
 print(res1)
 print(res2)
 print(dist)
@@ -187,4 +202,3 @@ print(res2)
 difference_mask = res[0] != res2.Distance
 print(res[difference_mask])
 print(pd.DataFrame(res2[difference_mask]))
-

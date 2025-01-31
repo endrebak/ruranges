@@ -19,11 +19,13 @@ import os
 # We’ll define a strategy to generate intervals in the form [(start, end, chrom), ...]
 # or [(start, end), ...]. We'll keep it simpler and ignore the chromosome/strand for now.
 
+
 def interval_strategy():
     """
     Hypothesis strategy to create a list of intervals.
     Each interval is (start, end), with start <= end.
     """
+
     # We generate a tuple of two integers between 0 and 1000.
     # We'll ensure start <= end by sorting them after generation.
     def fix_interval(t):
@@ -37,16 +39,14 @@ def interval_strategy():
             st.integers(min_value=0, max_value=10000),
         ).map(fix_interval),
         min_size=1,  # at least one interval
-        max_size=50  # limit for performance
+        max_size=50,  # limit for performance
     )
 
-@given(
-    intervals_a=interval_strategy(),
-    intervals_b=interval_strategy()
-)
+
+@given(intervals_a=interval_strategy(), intervals_b=interval_strategy())
 @settings(
     max_examples=1000,  # Increase or decrease based on desired test thoroughness
-    deadline=None       # Sometimes dealing with intervals can be slow; remove Hypothesis deadline
+    deadline=None,  # Sometimes dealing with intervals can be slow; remove Hypothesis deadline
 )
 def test_overlap_algorithms(intervals_a, intervals_b):
     """
@@ -94,7 +94,7 @@ def test_overlap_algorithms(intervals_a, intervals_b):
     ru = pr.PyRanges(pd.concat([ru1, ru2, pd.DataFrame(dist)], axis=1)).sort_ranges()
     print("ruranges " * 10, ru)
 
-    assert len(gold_standard_overlap) == len(ru) 
+    assert len(gold_standard_overlap) == len(ru)
     if len(ru) > 0:
         print(gold_standard_overlap)
         print(ru)
@@ -116,12 +116,11 @@ def test_overlap_algorithms(intervals_a, intervals_b):
     # the same shape or representation and compare to PyRanges.
 
 
-
-
 def call_with_bedtools(gr1, gr2):
     # Create two temporary BED files from the input PyRanges objects
-    with tempfile.NamedTemporaryFile(suffix=".bed", delete=False) as tmp1, \
-         tempfile.NamedTemporaryFile(suffix=".bed", delete=False) as tmp2:
+    with tempfile.NamedTemporaryFile(
+        suffix=".bed", delete=False
+    ) as tmp1, tempfile.NamedTemporaryFile(suffix=".bed", delete=False) as tmp2:
         tmp1_name = tmp1.name
         tmp2_name = tmp2.name
     # Write PyRanges to these BED files
@@ -138,8 +137,13 @@ def call_with_bedtools(gr1, gr2):
         lines = output_str.split("\n")
         if not lines or lines == [""]:
             # If there's no result
-            return pd.DataFrame({"Chromsome": [], "Start": [], "End": [], "Distance": []})
-        rows = [(int(el) for i, el in enumerate(line.split("\t")) if i in {0, 1, 2, 12}) for line in lines]
+            return pd.DataFrame(
+                {"Chromsome": [], "Start": [], "End": [], "Distance": []}
+            )
+        rows = [
+            (int(el) for i, el in enumerate(line.split("\t")) if i in {0, 1, 2, 12})
+            for line in lines
+        ]
         df_result = pd.DataFrame(rows)
         df_result.columns = ["Chromosome", "Start", "End", "Distance"]
         return df_result
@@ -149,4 +153,3 @@ def call_with_bedtools(gr1, gr2):
             os.remove(tmp1_name)
         if os.path.exists(tmp2_name):
             os.remove(tmp2_name)
-    

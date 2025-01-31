@@ -3,9 +3,10 @@ import numpy as np
 
 import ruranges
 
+
 def test_nearest_1():
-    intervals_a=[(0, 1), (1, 2)]
-    intervals_b=[(0, 1), (2, 3)]
+    intervals_a = [(0, 1), (1, 2)]
+    intervals_b = [(0, 1), (2, 3)]
 
     df, df2 = create_dataframes(intervals_a, intervals_b=intervals_b)
 
@@ -18,6 +19,7 @@ def test_nearest_1():
     assert [*ru.S] == [0]
     assert [*ru.E] == [1]
 
+
 # def test_nearest2():
 #     df, df2 = create_dataframes(intervals_a=[(0, 3), (1, 2)], intervals_b=[(3, 4)])
 #     print(df)
@@ -29,7 +31,7 @@ def test_nearest_1():
 #     assert [*ru.End] == [3, 2]
 #     assert [*ru.S] == [3, 3]
 #     assert [*ru.E] == [4, 4]
-# 
+#
 # def test_nearest3():
 #     df, df2 = create_dataframes(intervals_a=[(0, 3), (1, 2)], intervals_b=[(0, 1), (2, 3)])
 #     print(df)
@@ -41,7 +43,7 @@ def test_nearest_1():
 #     assert [*ru.End] == [2]
 #     assert [*ru.S] == [0]
 #     assert [*ru.E] == [1]
-# 
+#
 # def test_nearest4():
 #     df, df2 = create_dataframes(
 #         intervals_a=[(1, 33), (3, 5)],
@@ -49,12 +51,12 @@ def test_nearest_1():
 #     )
 #     print(df)
 #     print(df2)
-# 
+#
 #     ru = call_nearest(df, df2)
 #     print(ru)
 #     assert [*ru.Distance] == [1, 3]
-# 
-# 
+#
+#
 # def test_nearest5():
 #     df, df2 = create_dataframes(
 #         intervals_a=[(0, 1), (1, 2)],
@@ -62,10 +64,11 @@ def test_nearest_1():
 #     )
 #     print(df)
 #     print(df2)
-# 
+#
 #     ru = call_nearest(df, df2)
 #     print(ru)
 #     assert [*ru.Distance] == [3, 1]
+
 
 def call_nearest(df, df2):
     idx1, idx2, dist = ruranges.nearest_intervals_numpy(
