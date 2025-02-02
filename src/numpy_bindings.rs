@@ -13,9 +13,10 @@ use crate::cluster::sweep_line_cluster;
 use crate::complement::sweep_line_non_overlaps;
 use crate::complement_single::sweep_line_complement;
 use crate::merge::sweep_line_merge;
-use crate::nearest::{sweep_line_k_nearest, pick_k_distances_combined};
+use crate::nearest_unique_k::{sweep_line_k_nearest, pick_k_distances_combined};
 use crate::overlaps;
 use crate::overlaps::sweep_line_overlaps;
+use crate::overlaps_two_pointer;
 use crate::sorts;
 use crate::spliced_subsequence::spliced_subseq;
 use crate::subtract::sweep_line_subtract;
@@ -42,7 +43,7 @@ pub fn chromsweep_numpy(
     let ends_slice2 = ends2.as_slice()?;
     let idxs_slice2 = idxs2.as_slice()?;
 
-    let result = overlaps::sweep_line_overlaps(
+    let result = overlaps::sweep_line_overlaps2(
         chrs_slice,
         starts_slice,
         ends_slice,
@@ -56,6 +57,48 @@ pub fn chromsweep_numpy(
     Ok((
         result.0.into_pyarray(py).to_owned().into(),
         result.1.into_pyarray(py).to_owned().into(),
+    ))
+}
+
+#[pyfunction]
+pub fn nearest_with_overlaps_numpy(
+    py: Python,
+    chrs: PyReadonlyArray1<i64>,
+    starts: PyReadonlyArray1<i64>,
+    ends: PyReadonlyArray1<i64>,
+    idxs: PyReadonlyArray1<i64>,
+    chrs2: PyReadonlyArray1<i64>,
+    starts2: PyReadonlyArray1<i64>,
+    ends2: PyReadonlyArray1<i64>,
+    idxs2: PyReadonlyArray1<i64>,
+    slack: i64,
+    k: usize,
+) -> PyResult<(Py<PyArray1<i64>>, Py<PyArray1<i64>>, Py<PyArray1<i64>>)> {
+    let chrs_slice = chrs.as_slice()?;
+    let starts_slice = starts.as_slice()?;
+    let ends_slice = ends.as_slice()?;
+    let idxs_slice = idxs.as_slice()?;
+    let chrs_slice2 = chrs2.as_slice()?;
+    let starts_slice2 = starts2.as_slice()?;
+    let ends_slice2 = ends2.as_slice()?;
+    let idxs_slice2 = idxs2.as_slice()?;
+
+    let result = overlaps::sweep_line_overlaps_merged_with_heaps(
+        chrs_slice,
+        starts_slice,
+        ends_slice,
+        idxs_slice,
+        chrs_slice2,
+        starts_slice2,
+        ends_slice2,
+        idxs_slice2,
+        slack,
+        k,
+    );
+    Ok((
+        result.0.into_pyarray(py).to_owned().into(),
+        result.1.into_pyarray(py).to_owned().into(),
+        result.2.into_pyarray(py).to_owned().into(),
     ))
 }
 
@@ -116,7 +159,7 @@ pub fn sort_intervals_numpy(
 
 
 #[pyfunction]
-pub fn nearest_intervals_numpy(
+pub fn nearest_intervals_unique_k_numpy(
     chrs: PyReadonlyArray1<i64>,
     starts: PyReadonlyArray1<i64>,
     ends: PyReadonlyArray1<i64>,
@@ -307,23 +350,6 @@ pub fn spliced_subsequence_numpy(
 //     )
 // }
 
-#[pymodule]
-fn ruranges(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(chromsweep_numpy, m)?)?;
-    m.add_function(wrap_pyfunction!(complement_overlaps_numpy, m)?)?;
-    m.add_function(wrap_pyfunction!(sort_intervals_numpy, m)?)?;
-    m.add_function(wrap_pyfunction!(nearest_intervals_numpy, m)?)?;
-    m.add_function(wrap_pyfunction!(cluster_numpy, m)?)?;
-    m.add_function(wrap_pyfunction!(complement_numpy, m)?)?;
-    m.add_function(wrap_pyfunction!(boundary_numpy, m)?)?;
-    m.add_function(wrap_pyfunction!(subtract_numpy, m)?)?;
-//     m.add_function(wrap_pyfunction!(subsequence_numpy, m)?)?;
-    m.add_function(wrap_pyfunction!(spliced_subsequence_numpy, m)?)?;
-    m.add_function(wrap_pyfunction!(merge_numpy, m)?)?;
-    // m.add_function(wrap_pyfunction!(nearest_next_intervals_numpy, m)?)?;
-    // m.add_function(wrap_pyfunction!(nearest_previous_intervals_numpy, m)?)?;
-    Ok(())
-}
 
 
 #[pyfunction]
@@ -460,4 +486,23 @@ impl FromStr for Direction {
             _ => Err(format!("Invalid direction: {}", s)),
         }
     }
+}
+
+#[pymodule]
+fn ruranges(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_function(wrap_pyfunction!(chromsweep_numpy, m)?)?;
+    m.add_function(wrap_pyfunction!(nearest_with_overlaps_numpy, m)?)?;
+    m.add_function(wrap_pyfunction!(complement_overlaps_numpy, m)?)?;
+    m.add_function(wrap_pyfunction!(sort_intervals_numpy, m)?)?;
+    m.add_function(wrap_pyfunction!(nearest_intervals_unique_k_numpy, m)?)?;
+    m.add_function(wrap_pyfunction!(cluster_numpy, m)?)?;
+    m.add_function(wrap_pyfunction!(complement_numpy, m)?)?;
+    m.add_function(wrap_pyfunction!(boundary_numpy, m)?)?;
+    m.add_function(wrap_pyfunction!(subtract_numpy, m)?)?;
+//     m.add_function(wrap_pyfunction!(subsequence_numpy, m)?)?;
+    m.add_function(wrap_pyfunction!(spliced_subsequence_numpy, m)?)?;
+    m.add_function(wrap_pyfunction!(merge_numpy, m)?)?;
+    // m.add_function(wrap_pyfunction!(nearest_next_intervals_numpy, m)?)?;
+    // m.add_function(wrap_pyfunction!(nearest_previous_intervals_numpy, m)?)?;
+    Ok(())
 }

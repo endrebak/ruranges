@@ -1,6 +1,6 @@
 pub mod cluster;
 pub mod complement;
-pub mod nearest;
+pub mod nearest_unique_k;
 pub mod numpy_bindings;
 pub mod overlaps;
 pub mod ruranges_structs;
@@ -10,3 +10,4 @@ pub mod spliced_subsequence;
 pub mod complement_single;
 pub mod boundary;
 pub mod subtract;
+pub mod overlaps_two_pointer;

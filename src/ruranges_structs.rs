@@ -1,10 +1,11 @@
 #[derive(Debug, Clone)]
 pub struct Interval {
-    pub chr: i64,
+    pub group: i64,
     pub start: i64,
     pub end: i64,
     pub idx: i64,
 }
+
 
 /// An "event" in the sweep line:
 /// - `pos`: the coordinate (start or end of an interval)
@@ -17,6 +18,13 @@ pub struct Event {
     pub pos: i64,
     pub is_start: bool,
     pub first_set: bool,
+    pub idx: i64,
+}
+
+#[derive(Debug, Clone, Hash)]
+pub struct MinEvent {
+    pub chr: i64,
+    pub pos: i64,
     pub idx: i64,
 }
 

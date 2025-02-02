@@ -4,16 +4,17 @@ use radsort::sort_by_key;
 
 use crate::ruranges_structs::Event;
 use crate::ruranges_structs::Interval;
+use crate::ruranges_structs::MinEvent;
 use crate::ruranges_structs::SplicedSubsequenceInterval;
 use crate::ruranges_structs::SubsequenceInterval;
 
-pub fn build_intervals(chrs: &[i64], starts: &[i64], ends: &[i64], idxs: &[i64]) -> Vec<Interval> {
+pub fn build_intervals(chrs: &[i64], starts: &[i64], ends: &[i64], idxs: &[i64], slack: i64) -> Vec<Interval> {
     let mut intervals: Vec<Interval> = Vec::with_capacity(chrs.len());
     for i in 0..chrs.len() {
         intervals.push(Interval {
-            chr: chrs[i],
-            start: starts[i],
-            end: ends[i],
+            group: chrs[i],
+            start: starts[i] - slack,
+            end: ends[i] + slack,
             idx: idxs[i],
         });
     }
@@ -66,15 +67,20 @@ pub fn build_sorted_intervals(
     starts: &[i64],
     ends: &[i64],
     idxs: &[i64],
+    slack: i64,
+    sort_on_ends_too: bool,
 ) -> Vec<Interval> {
-    let mut intervals = build_intervals(chrs, starts, ends, idxs);
+    let mut intervals = build_intervals(chrs, starts, ends, idxs, slack);
 
-    sort_by_key(&mut intervals, |i| i.end);
+    if sort_on_ends_too {
+        sort_by_key(&mut intervals, |i| i.end);
+    };
     sort_by_key(&mut intervals, |i| i.start);
-    sort_by_key(&mut intervals, |i| i.chr);
+    sort_by_key(&mut intervals, |i| i.group);
 
     intervals
 }
+
 
 pub fn build_sorted_subsequence_intervals(
     chrs: &[i64],
@@ -110,7 +116,7 @@ pub fn build_sorted_sequence_intervals(
 }
 
 pub fn sort_order_idx(chrs: &[i64], starts: &[i64], ends: &[i64], idxs: &[i64]) -> Vec<i64> {
-    build_sorted_intervals(chrs, starts, ends, idxs)
+    build_sorted_intervals(chrs, starts, ends, idxs, 0, true)
         .iter()
         .map(|i| i.idx)
         .collect()
@@ -121,19 +127,19 @@ fn split_by_chromosome(mut intervals: Vec<Interval>) -> HashMap<i64, Vec<Interva
     if intervals.len() == 0 {
         return result;
     }
-    sort_by_key(&mut intervals, |i| i.chr);
+    sort_by_key(&mut intervals, |i| i.group);
 
-    let mut current_chr = intervals.first().unwrap().chr;
+    let mut current_chr = intervals.first().unwrap().group;
     let mut current_group = Vec::new();
 
     for interval in intervals {
-        if current_chr != interval.chr {
+        if current_chr != interval.group {
             // We encountered a new chromosome, so store the old group
             result.insert(current_chr, std::mem::take(&mut current_group));
-            current_chr = interval.chr;
+            current_chr = interval.group;
         } else {
             // First interval
-            current_chr = interval.chr;
+            current_chr = interval.group;
         }
         current_group.push(interval);
     }
@@ -243,6 +249,48 @@ pub fn build_sorted_events_single_collection(
     events
 }
 
+pub fn build_sorted_events_single_collection_separate_outputs(
+    chrs: &[i64],
+    starts: &[i64],
+    ends: &[i64],
+    idxs: &[i64],
+    slack: i64,
+) -> (Vec<MinEvent>, Vec<MinEvent>) {
+    let mut out_starts: Vec<MinEvent> = Vec::with_capacity(chrs.len());
+    let mut out_ends: Vec<MinEvent> = Vec::with_capacity(chrs.len());
+
+    // Convert set1 intervals into events
+    for i in 0..chrs.len() {
+        out_starts.push(MinEvent {
+            chr: chrs[i],
+            pos: starts[i] - slack,
+            idx: idxs[i],
+        });
+    }
+    for i in 0..chrs.len() {
+        {
+        out_ends.push(MinEvent {
+            chr: chrs[i],
+            pos: ends[i] + slack,
+            idx: idxs[i],
+        });
+        }
+    }
+
+    // Sort events by:
+    // 1. pos (ascending)
+    // 2. is_start before is_end (if pos ties)
+    // (We don't strictly need to tie-break by set_id or idx, but we can.)
+
+    sort_by_key(&mut out_starts, |e| e.pos);
+    sort_by_key(&mut out_starts, |e| e.chr);
+
+    sort_by_key(&mut out_ends, |e| e.pos);
+    sort_by_key(&mut out_ends, |e| e.chr);
+
+    (out_starts, out_ends)
+}
+
 pub fn build_sorted_events(
     chrs: &[i64],
     starts: &[i64],
@@ -291,14 +339,9 @@ pub fn build_sorted_events(
         });
     }
 
-    // Sort events by:
-    // 1. pos (ascending)
-    // 2. is_start before is_end (if pos ties)
-    // (We don't strictly need to tie-break by set_id or idx, but we can.)
-
-    // sort_by_key(&mut events, |e| e.is_start);
-    // sort_by_key(&mut events, |e| e.pos);
-    sort_by_key(&mut events, |e| (e.chr, e.pos, e.is_start));
+    sort_by_key(&mut events, |e| e.is_start);
+    sort_by_key(&mut events, |e| e.pos);
+    sort_by_key(&mut events, |e| e.chr);
 
     events
 }
@@ -312,14 +355,14 @@ pub fn build_sorted_events_from_intervals(
     // Convert set1 intervals into events
     for interval in intervals1 {
         events.push(Event {
-            chr: interval.chr,
+            chr: interval.group,
             pos: interval.start,
             is_start: true,
             first_set: true,
             idx: interval.idx,
         });
         events.push(Event {
-            chr: interval.chr,
+            chr: interval.group,
             pos: interval.end,
             is_start: false,
             first_set: true,
@@ -329,14 +372,14 @@ pub fn build_sorted_events_from_intervals(
 
     for interval in intervals2 {
         events.push(Event {
-            chr: interval.chr,
+            chr: interval.group,
             pos: interval.start,
             is_start: true,
             first_set: false,
             idx: interval.idx,
         });
         events.push(Event {
-            chr: interval.chr,
+            chr: interval.group,
             pos: interval.end,
             is_start: false,
             first_set: false,
