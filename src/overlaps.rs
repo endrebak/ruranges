@@ -1,4 +1,6 @@
-use rustc_hash::FxHashSet;
+use std::collections::{HashMap, HashSet};
+
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::ruranges_structs::MinEvent;
 use crate::sorts::build_sorted_events_single_collection_separate_outputs;
@@ -33,12 +35,12 @@ pub fn sweep_line_overlaps(
     let (sorted_starts, sorted_ends) = build_sorted_events_single_collection_separate_outputs(chrs, starts, ends, idxs, slack);
     let (sorted_starts2, sorted_ends2) = build_sorted_events_single_collection_separate_outputs(chrs2, starts2, ends2, idxs2, 0);
     // We'll collect all cross overlaps here
-    let mut overlaps = Vec::new();
-    let mut overlaps2 = Vec::new();
+    let mut out_idxs = Vec::new();
+    let mut out_idxs2 = Vec::new();
 
     // If either set is empty, there can be no cross overlaps.
     if sorted_starts.is_empty() && sorted_starts2.is_empty() {
-        return (overlaps, overlaps2);
+        return (out_idxs, out_idxs2);
     }
 
     let k = 2;
@@ -46,6 +48,9 @@ pub fn sweep_line_overlaps(
     // Active sets
     let mut active1 = FxHashSet::default();
     let mut active2 = FxHashSet::default();
+
+    let mut overlaps: HashMap<i64, Vec<i64>> = HashMap::default();
+    let mut nearest_left: HashMap<i64, Vec<Nearest>> = HashMap::default();
 
     // Indices for each of the four sorted lists
     let mut i1 = 0usize; // pointer into sorted_starts  (set 1, is_start = true)
@@ -89,7 +94,7 @@ pub fn sweep_line_overlaps(
 
     // If there’s no first event at all, we’re done
     if first.is_none() {
-        return (overlaps, overlaps2);
+        return (out_idxs, out_idxs2);
     }
     let mut current_chr = first.unwrap().0; // unwrap and take the chr of the first event
 
@@ -107,8 +112,8 @@ pub fn sweep_line_overlaps(
         // Check each list’s head if available, track the min
         for (lst_id, ev) in [
             (1, get_event(&sorted_starts, i1, true, true)),
-            (2, get_event(&sorted_ends, i2, false, true)),
-            (3, get_event(&sorted_starts2, i3, true, false)),
+            (2, get_event(&sorted_starts2, i2, true, false)),
+            (3, get_event(&sorted_ends, i3, false, true)),
             (4, get_event(&sorted_ends2, i4, false, false)),
         ] {
             if let Some(e) = ev {
@@ -143,25 +148,30 @@ pub fn sweep_line_overlaps(
         if is_start {
             // Interval is starting
             if first_set {
-                add_nearest_intervals_to_the_left(
-                    chr,                // current chromosome
-                    pos,
-                    &sorted_ends2,      // all "end" events from set2
-                    i4,                 // pointer to the next "end" event in set2
-                    k,                  // how many left intervals you want
+                nearest_left.insert(
+                    idx,
+                    nearest_intervals_to_the_left(
+                        chr,                // current chromosome
+                        pos,
+                        &sorted_ends2,      // all "end" events from set2
+                        i4,                 // pointer to the next "end" event in set2
+                        k,                  // how many left intervals you want
+                    )
                 );
                 // Overlaps with all currently active intervals in set2
                 for &idx2 in active2.iter() {
-                    overlaps.push(idx);
-                    overlaps2.push(idx2);
+                    overlaps.entry(idx)
+                    .or_insert_with(Vec::new)
+                    .push(idx2);
                 }
                 // Now add it to active1
                 active1.insert(idx);
             } else {
                 // Overlaps with all currently active intervals in set1
                 for &idx1 in active1.iter() {
-                    overlaps.push(idx1);
-                    overlaps2.push(idx);
+                    overlaps.entry(idx1)
+                    .or_insert_with(Vec::new)
+                    .push(idx);
                 }
                 // Now add it to active2
                 active2.insert(idx);
@@ -170,6 +180,15 @@ pub fn sweep_line_overlaps(
             // Interval is ending
             if first_set {
                 active1.remove(&idx);
+                if let Some(vec) = overlaps.get(&idx) {
+                    for &idx2 in vec {
+                        out_idxs.push(idx);
+                        out_idxs2.push(idx2);
+                    }
+                }
+                nearest_intervals_to_the_right(chr, pos, &sorted_starts2, i3, k);
+                overlaps.remove(&idx);
+                nearest_left.remove(&idx);
             } else {
                 active2.remove(&idx);
             }
@@ -185,7 +204,7 @@ pub fn sweep_line_overlaps(
         }
     }
 
-    (overlaps, overlaps2)
+    (out_idxs, out_idxs2)
 }
 
 
@@ -197,36 +216,17 @@ pub struct Nearest {
 }
 
 
-fn add_nearest_intervals_to_the_left(
-    chr: i64,
-    current_interval_pos: i64,
-    sorted_ends2: &[MinEvent],
-    i4: usize,
-    k: usize,
-) {
-    let mut distances: Vec<Nearest> = Vec::with_capacity(k);
-    // We'll look backward through the intervals that ended in set2,
-    // which are at positions [0..i4] in sorted_ends2.
-    // We want up to k intervals on the same chromosome (chr).
-    let mut count = 0;
-
-    // i4 is the "next to process" in ends2, so the last *finished* event is i4 - 1.
-    // Make sure we don't panic if i4 == 0.
-    let mut idx = i4;
-    while idx > 0 && count < k {
-        idx -= 1;
-        let ev = &sorted_ends2[idx];
-        // If we only want intervals on the same chromosome, break if we see a mismatch.
-        if ev.chr != chr {
-            break;
-        }
-        // ev.idx is the index of the ended interval in set2
-        idxs2.push(ev.idx);
-        distances.push(ev.pos - (current_interval_pos + 1));
-
-        count += 1;
-    }
+#[derive(Debug, Clone, Hash)]
+pub struct NearestIntervals {
+    pub idx1: i64,
+    pub left_distances: Vec<i64>,
+    pub left_pos: Vec<i64>,
+    pub overlaps: Vec<i64>,
+    pub right_distances: Vec<i64>,
+    pub right_pos: Vec<i64>,
 }
+
+
 
 
 
@@ -305,4 +305,74 @@ pub fn sweep_line_overlaps2(
     }
 
     (overlaps, overlaps2)
+}
+
+fn nearest_intervals_to_the_left(
+    chr: i64,
+    current_interval_pos: i64,
+    sorted_ends2: &[MinEvent],
+    i4: usize,
+    k: usize,
+) -> Vec<Nearest> {
+    // We'll look backward through the intervals that ended in set2,
+    // which are at positions [0..i4] in sorted_ends2.
+    // We want up to k intervals on the same chromosome (chr).
+    let mut count = 0;
+    let mut nearest: Vec<Nearest> = Vec::new();
+
+    // i4 is the "next to process" in ends2, so the last *finished* event is i4 - 1.
+    // Make sure we don't panic if i4 == 0.
+    let mut idx = i4;
+    while idx > 0 && count < k {
+        idx -= 1;
+        let ev = &sorted_ends2[idx];
+        // If we only want intervals on the same chromosome, break if we see a mismatch.
+        if ev.chr != chr {
+            break;
+        }
+        // ev.idx is the index of the ended interval in set2
+        nearest.push(
+            Nearest {
+                distance: ev.pos - (current_interval_pos + 1),
+                idx2: ev.idx
+            }
+        );
+        count += 1;
+    }
+    nearest
+}
+
+fn nearest_intervals_to_the_right(
+    chr: i64,
+    current_interval_pos: i64,
+    sorted_starts2: &[MinEvent],
+    i3: usize,
+    k: usize,
+) -> Vec<Nearest> {
+    // We'll look backward through the intervals that ended in set2,
+    // which are at positions [0..i4] in sorted_ends2.
+    // We want up to k intervals on the same chromosome (chr).
+    let mut count = 0;
+    let mut nearest: Vec<Nearest> = Vec::new();
+
+    // i4 is the "next to process" in ends2, so the last *finished* event is i4 - 1.
+    // Make sure we don't panic if i4 == 0.
+    let mut idx = i3;
+    while sorted_starts2.len() > idx && count < k {
+        let ev = &sorted_starts2[idx];
+        // If we only want intervals on the same chromosome, break if we see a mismatch.
+        if ev.chr != chr {
+            break;
+        }
+        // ev.idx is the index of the ended interval in set2
+        nearest.push(
+            Nearest {
+                distance: (current_interval_pos + 1) - ev.pos,
+                idx2: ev.idx
+            }
+        );
+        idx += 1;
+        count += 1;
+    }
+    nearest
 }
