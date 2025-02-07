@@ -14,15 +14,13 @@ pub fn sweep_line_subtract(
 ) -> (Vec<i64>, Vec<i64>, Vec<i64>) {
     // If either set is empty, set1 is unchanged (or trivially subtracted).
     if chrs1.is_empty() || chrs2.is_empty() {
-        return (
-            idxs1.to_vec(),
-            starts1.to_vec(),
-            ends1.to_vec(),
-        );
+        return (idxs1.to_vec(), starts1.to_vec(), ends1.to_vec());
     }
 
     // Build sorted events
-    let events = sorts::build_sorted_events(chrs1, starts1, ends1, idxs1, chrs2, starts2, ends2, idxs2, 0);
+    let events = sorts::build_sorted_events(
+        chrs1, starts1, ends1, idxs1, chrs2, starts2, ends2, idxs2, 0,
+    );
 
     // Output buffers
     let mut result_idxs = Vec::new();
@@ -46,7 +44,7 @@ pub fn sweep_line_subtract(
         // because intervals do not cross chromosome boundaries.
         if e.chr != current_chr {
             // for any active sub-interval in the old chromosome, we close them at the last event pos
-            // but in typical coordinate intervals, they should already be ended by the end event. 
+            // but in typical coordinate intervals, they should already be ended by the end event.
             // We'll do a final cleanup if you want. Usually, each interval on the old chr
             // has presumably ended with an event, but if not, you can decide to finalize them here.
 
@@ -59,10 +57,10 @@ pub fn sweep_line_subtract(
         let pos = e.pos;
 
         // --- 1. If we have *just arrived* at a new position, and `active2_count == 0`,
-        // we are "continuing" sub-intervals for all active1. 
+        // we are "continuing" sub-intervals for all active1.
         //
         // But typically, the actual writing out of intervals
-        // occurs at the event boundaries (start or end). 
+        // occurs at the event boundaries (start or end).
         // We'll handle that logic around the transitions.
 
         // --- 2. Now handle the event itself:
@@ -71,7 +69,7 @@ pub fn sweep_line_subtract(
             // This event is from set1
             if e.is_start {
                 // A set1 interval starts
-                // If we are outside set2 (active2_count==0), 
+                // If we are outside set2 (active2_count==0),
                 // that means we can immediately start capturing a sub-interval.
                 if active2_count == 0 {
                     active1.insert(e.idx, Some(pos));
@@ -136,8 +134,8 @@ pub fn sweep_line_subtract(
             }
         }
 
-        // Optionally, you can look ahead to the next event's position 
-        // to handle the "between events" region if needed. 
+        // Optionally, you can look ahead to the next event's position
+        // to handle the "between events" region if needed.
         // But typically, the creation of sub-intervals at boundaries is enough.
 
         // 3. Move on to the next event

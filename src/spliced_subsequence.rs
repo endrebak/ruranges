@@ -1,6 +1,5 @@
 use crate::{
-    ruranges_structs::SplicedSubsequenceInterval,
-    sorts::build_sorted_subsequence_intervals,
+    ruranges_structs::SplicedSubsequenceInterval, sorts::build_sorted_subsequence_intervals,
 };
 
 /// Replicates the "spliced_subseq" logic in one pass for intervals sorted by (chrom, start, end).
@@ -80,7 +79,7 @@ pub fn spliced_subseq(
         // Adjust each interval according to the spliced subsequence logic.
         for iv in group.iter_mut() {
             let cumsum_start = iv.temp_cumsum - iv.temp_length; // spliced start of this exon
-            let cumsum_end = iv.temp_cumsum;                    // spliced end of this exon
+            let cumsum_end = iv.temp_cumsum; // spliced end of this exon
 
             // Determine if we use forward or reverse logic:
             // if force_plus == true, always do forward logic
@@ -120,7 +119,9 @@ pub fn spliced_subseq(
 
         let strand = group.first().unwrap().forward_strand;
         // Filter out intervals where start >= end, then push to results
-        if !strand { group.reverse() };
+        if !strand {
+            group.reverse()
+        };
         for iv in group.iter() {
             if iv.start < iv.end {
                 out_idxs.push(iv.idx);

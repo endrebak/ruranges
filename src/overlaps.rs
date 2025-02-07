@@ -1,220 +1,130 @@
-use std::collections::{HashMap, HashSet};
+use rustc_hash::FxHashSet;
 
-use rustc_hash::{FxHashMap, FxHashSet};
-
-use crate::ruranges_structs::MinEvent;
-use crate::sorts::build_sorted_events_single_collection_separate_outputs;
+use crate::ruranges_structs::{MinEvent, OverlapPair};
 use crate::sorts;
 
-
 /// Perform a four-way merge sweep to find cross overlaps.
-pub fn sweep_line_overlaps(
-    chrs: &[i64],
-    starts: &[i64],
-    ends: &[i64],
-    idxs: &[i64],
-    chrs2: &[i64],
-    starts2: &[i64],
-    ends2: &[i64],
-    idxs2: &[i64],
-    slack: i64,
-) -> (Vec<i64>, Vec<i64>) {
-    // Build the four sorted lists of positions:
-    //
-    //   - sorted_starts:   starts from set 1
-    //   - sorted_ends:     ends   from set 1
-    //   - sorted_starts2:  starts from set 2
-    //   - sorted_ends2:    ends   from set 2
-    //
-    // Internally, each MinEvent has:
-    //   { chr: i64, pos: i64, idx: i64 }
-    //
-    // For example, `sorts::build_sorted_positions` might produce these four lists
-    // ordered by (chr, pos) ascending, with the appropriate slack adjustments
-    // if that's part of the logic. Make sure each MinEvent has the correct chr.
-    let (sorted_starts, sorted_ends) = build_sorted_events_single_collection_separate_outputs(chrs, starts, ends, idxs, slack);
-    let (sorted_starts2, sorted_ends2) = build_sorted_events_single_collection_separate_outputs(chrs2, starts2, ends2, idxs2, 0);
-    // We'll collect all cross overlaps here
-    let mut out_idxs = Vec::new();
-    let mut out_idxs2 = Vec::new();
 
-    // If either set is empty, there can be no cross overlaps.
-    if sorted_starts.is_empty() && sorted_starts2.is_empty() {
-        return (out_idxs, out_idxs2);
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum WhichList {
+    StartSet1,
+    EndSet1,
+    StartSet2,
+    EndSet2,
+}
+
+impl WhichList {
+    #[inline]
+    fn is_start(&self) -> bool {
+        match self {
+            WhichList::StartSet1 | WhichList::StartSet2 => true,
+            WhichList::EndSet1 | WhichList::EndSet2 => false,
+        }
+    }
+}
+
+pub fn sweep_line_overlaps_nearest(
+    sorted_starts: &[MinEvent],  // set 1 starts
+    sorted_ends: &[MinEvent],    // set 1 ends
+    sorted_starts2: &[MinEvent], // set 2 starts
+    sorted_ends2: &[MinEvent],   // set 2 ends
+) -> Vec<OverlapPair> {
+    let mut out_idxs = Vec::new();
+
+    // Quick check: if no starts exist in either set, no overlaps.
+    if sorted_starts.is_empty() || sorted_starts2.is_empty() {
+        return out_idxs;
     }
 
-    let k = 2;
-
-    // Active sets
+    // Active intervals for set1, set2
     let mut active1 = FxHashSet::default();
     let mut active2 = FxHashSet::default();
 
-    let mut overlaps: HashMap<i64, Vec<i64>> = HashMap::default();
-    let mut nearest_left: HashMap<i64, Vec<Nearest>> = HashMap::default();
+    // Pointers into each list
+    let mut i1 = 0usize; // pointer into sorted_starts  (set 1)
+    let mut i2 = 0usize; // pointer into sorted_starts2 (set 2)
+    let mut i3 = 0usize; // pointer into sorted_ends    (set 1)
+    let mut i4 = 0usize; // pointer into sorted_ends2   (set 2)
 
-    // Indices for each of the four sorted lists
-    let mut i1 = 0usize; // pointer into sorted_starts  (set 1, is_start = true)
-    let mut i2 = 0usize; // pointer into sorted_ends    (set 1, is_start = false)
-    let mut i3 = 0usize; // pointer into sorted_starts2 (set 2, is_start = true)
-    let mut i4 = 0usize; // pointer into sorted_ends2   (set 2, is_start = false)
+    // Figure out the very first chromosome we encounter (if any):
+    // We'll look at the heads of each list and pick the lexicographically smallest.
+    let first_candidate = pick_winner_of_four(
+        sorted_starts.get(i1).map(|e| (WhichList::StartSet1, e)),
+        sorted_starts2.get(i2).map(|e| (WhichList::StartSet2, e)),
+        sorted_ends.get(i3).map(|e| (WhichList::EndSet1, e)),
+        sorted_ends2.get(i4).map(|e| (WhichList::EndSet2, e)),
+    );
 
-    // A small helper to get the "next" event from one of the four lists if available
-    // We also embed the additional info: (is_start, first_set)
-    // - (is_start = true,  first_set = true)  => from sorted_starts
-    // - (is_start = false, first_set = true)  => from sorted_ends
-    // - (is_start = true,  first_set = false) => from sorted_starts2
-    // - (is_start = false, first_set = false) => from sorted_ends2
-    //
-    // We return `None` if the index is out of range for that list.
-    fn get_event(
-        list: &[MinEvent],
-        idx: usize,
-        is_start: bool,
-        first_set: bool,
-    ) -> Option<(i64, i64, i64, bool, bool)> {
-        if idx < list.len() {
-            let p = &list[idx];
-            Some((p.chr, p.pos, p.idx, is_start, first_set))
-        } else {
-            None
-        }
-    }
+    // Unwrap the first candidate’s chromosome
+    let mut current_chr = first_candidate.unwrap().1.chr;
 
-    // Grab the chromosome of the first event we’ll process, if any
-    // We do this by picking the lexicographically smallest among all heads:
-    let first = [
-        get_event(&sorted_starts, i1, true, true),
-        get_event(&sorted_ends, i2, false, true),
-        get_event(&sorted_starts2, i3, true, false),
-        get_event(&sorted_ends2, i4, false, false),
-    ]
-    .into_iter()
-    .flatten() // drop the Nones
-    .min_by_key(|(chr, pos, _, _, _)| (*chr, *pos));
-
-    // If there’s no first event at all, we’re done
-    if first.is_none() {
-        return (out_idxs, out_idxs2);
-    }
-    let mut current_chr = first.unwrap().0; // unwrap and take the chr of the first event
-
-    // While there are still elements in any of the 4 lists...
+    // Main sweep-line loop
     while i1 < sorted_starts.len()
-        || i2 < sorted_ends.len()
-        || i3 < sorted_starts2.len()
+        || i2 < sorted_starts2.len()
+        || i3 < sorted_ends.len()
         || i4 < sorted_ends2.len()
     {
-        // Find the smallest (chr, pos) among the 4 candidates
-        // [i1-th of sorted_starts, i2-th of sorted_ends, i3-th of sorted_starts2, i4-th of sorted_ends2].
-        let mut candidate: Option<(i64, i64, i64, bool, bool)> = None; // (chr, pos, idx, is_start, first_set)
-        let mut which_list: i8 = 0; // 1 => i1, 2 => i2, 3 => i3, 4 => i4
-
-        // Check each list’s head if available, track the min
-        for (lst_id, ev) in [
-            (1, get_event(&sorted_starts, i1, true, true)),
-            (2, get_event(&sorted_starts2, i2, true, false)),
-            (3, get_event(&sorted_ends, i3, false, true)),
-            (4, get_event(&sorted_ends2, i4, false, false)),
-        ] {
-            if let Some(e) = ev {
-                // e has the shape (chr, pos, idx, is_start, first_set)
-                if let Some(current) = candidate {
-                    // compare e to current
-                    if (e.0, e.1) < (current.0, current.1) {
-                        candidate = Some(e);
-                        which_list = lst_id;
-                    }
-                } else {
-                    candidate = Some(e);
-                    which_list = lst_id;
-                }
-            }
-        }
-
-        // If no candidate was found, we’re done
-        let (chr, pos, idx, is_start, first_set) = match candidate {
-            None => break,
-            Some(x) => x,
+        let (which_list, event) = if let Some((which_list, event)) = pick_winner_of_four(
+            sorted_starts.get(i1).map(|e| (WhichList::StartSet1, e)),
+            sorted_starts2.get(i2).map(|e| (WhichList::StartSet2, e)),
+            sorted_ends.get(i3).map(|e| (WhichList::EndSet1, e)),
+            sorted_ends2.get(i4).map(|e| (WhichList::EndSet2, e)),
+        ) {
+            (which_list, event)
+        } else {
+            break;
         };
 
-        // If we moved to a new chromosome, clear active sets
-        if chr != current_chr {
+        // If we've moved to a new chromosome, reset active sets
+        if event.chr != current_chr {
             active1.clear();
             active2.clear();
-            current_chr = chr;
+            current_chr = event.chr;
         }
 
-        // Apply the sweep-line logic
-        if is_start {
-            // Interval is starting
-            if first_set {
-                nearest_left.insert(
-                    idx,
-                    nearest_intervals_to_the_left(
-                        chr,                // current chromosome
-                        pos,
-                        &sorted_ends2,      // all "end" events from set2
-                        i4,                 // pointer to the next "end" event in set2
-                        k,                  // how many left intervals you want
-                    )
-                );
-                // Overlaps with all currently active intervals in set2
+        // Advance the pointer for whichever list we took an event from
+        match which_list {
+            WhichList::StartSet1 => {
                 for &idx2 in active2.iter() {
-                    overlaps.entry(idx)
-                    .or_insert_with(Vec::new)
-                    .push(idx2);
+                    out_idxs.push(OverlapPair {
+                        idx: event.idx,
+                        idx2: idx2,
+                    })
                 }
                 // Now add it to active1
-                active1.insert(idx);
-            } else {
-                // Overlaps with all currently active intervals in set1
+                active1.insert(event.idx);
+                i1 += 1
+            }
+            WhichList::StartSet2 => {
                 for &idx1 in active1.iter() {
-                    overlaps.entry(idx1)
-                    .or_insert_with(Vec::new)
-                    .push(idx);
+                    out_idxs.push(OverlapPair {
+                        idx: idx1,
+                        idx2: event.idx,
+                    })
                 }
                 // Now add it to active2
-                active2.insert(idx);
+                active2.insert(event.idx);
+                i2 += 1
             }
-        } else {
-            // Interval is ending
-            if first_set {
-                active1.remove(&idx);
-                if let Some(vec) = overlaps.get(&idx) {
-                    for &idx2 in vec {
-                        out_idxs.push(idx);
-                        out_idxs2.push(idx2);
-                    }
-                }
-                nearest_intervals_to_the_right(chr, pos, &sorted_starts2, i3, k);
-                overlaps.remove(&idx);
-                nearest_left.remove(&idx);
-            } else {
-                active2.remove(&idx);
+            WhichList::EndSet1 => {
+                active1.remove(&event.idx);
+                i3 += 1
             }
-        }
-
-        // Advance the pointer for whichever list we took an element from
-        match which_list {
-            1 => i1 += 1,
-            2 => i2 += 1,
-            3 => i3 += 1,
-            4 => i4 += 1,
-            _ => {}
+            WhichList::EndSet2 => {
+                active2.remove(&event.idx);
+                i4 += 1
+            }
         }
     }
 
-    (out_idxs, out_idxs2)
+    out_idxs
 }
-
-
 
 #[derive(Debug, Clone, Hash)]
 pub struct Nearest {
     pub distance: i64,
     pub idx2: i64,
 }
-
 
 #[derive(Debug, Clone, Hash)]
 pub struct NearestIntervals {
@@ -225,10 +135,6 @@ pub struct NearestIntervals {
     pub right_distances: Vec<i64>,
     pub right_pos: Vec<i64>,
 }
-
-
-
-
 
 /// Returns all overlapping pairs (idx1, idx2) between intervals in set1 and set2.
 /// This uses a line-sweep / active-set approach.
@@ -250,7 +156,6 @@ pub fn sweep_line_overlaps2(
     idxs2: &[i64],
     slack: i64,
 ) -> (Vec<i64>, Vec<i64>) {
-
     // We'll collect all cross overlaps here
     let mut overlaps = Vec::new();
     let mut overlaps2 = Vec::new();
@@ -259,7 +164,9 @@ pub fn sweep_line_overlaps2(
         return (overlaps, overlaps2);
     };
 
-    let events = sorts::build_sorted_events(chrs, starts, ends, idxs, chrs2, starts2, ends2, idxs2, slack);
+    let events = sorts::build_sorted_events(
+        chrs, starts, ends, idxs, chrs2, starts2, ends2, idxs2, slack,
+    );
 
     // Active sets
     let mut active1 = FxHashSet::default();
@@ -331,12 +238,10 @@ fn nearest_intervals_to_the_left(
             break;
         }
         // ev.idx is the index of the ended interval in set2
-        nearest.push(
-            Nearest {
-                distance: ev.pos - (current_interval_pos + 1),
-                idx2: ev.idx
-            }
-        );
+        nearest.push(Nearest {
+            distance: ev.pos - (current_interval_pos + 1),
+            idx2: ev.idx,
+        });
         count += 1;
     }
     nearest
@@ -365,14 +270,58 @@ fn nearest_intervals_to_the_right(
             break;
         }
         // ev.idx is the index of the ended interval in set2
-        nearest.push(
-            Nearest {
-                distance: (current_interval_pos + 1) - ev.pos,
-                idx2: ev.idx
-            }
-        );
+        nearest.push(Nearest {
+            distance: (current_interval_pos + 1) - ev.pos,
+            idx2: ev.idx,
+        });
         idx += 1;
         count += 1;
     }
     nearest
+}
+
+fn pick_winner_of_four<'a>(
+    s1: Option<(WhichList, &'a MinEvent)>,
+    s2: Option<(WhichList, &'a MinEvent)>,
+    e1: Option<(WhichList, &'a MinEvent)>,
+    e2: Option<(WhichList, &'a MinEvent)>,
+) -> Option<(WhichList, &'a MinEvent)> {
+    let starts_winner = pick_winner_of_two_choose_first_if_equal(s1, e1);
+    let ends_winner = pick_winner_of_two_choose_first_if_equal(s2, e2);
+    pick_winner_of_two_choose_first_if_equal(starts_winner, ends_winner)
+}
+
+fn pick_winner_of_two_choose_first_if_equal<'a>(
+    a: Option<(WhichList, &'a MinEvent)>,
+    b: Option<(WhichList, &'a MinEvent)>,
+) -> Option<(WhichList, &'a MinEvent)> {
+    match (a, b) {
+        (None, None) => None,
+        (Some(x), None) => Some(x),
+        (None, Some(y)) => Some(y),
+        (Some((wh_a, ev_a)), Some((wh_b, ev_b))) => {
+            // Compare by chromosome
+            if ev_a.chr < ev_b.chr {
+                return Some((wh_a, ev_a));
+            } else if ev_b.chr < ev_a.chr {
+                return Some((wh_b, ev_b));
+            }
+            // Same chr => compare by pos
+            if ev_a.pos < ev_b.pos {
+                return Some((wh_a, ev_a));
+            } else if ev_b.pos < ev_a.pos {
+                return Some((wh_b, ev_b));
+            }
+            // Same (chr, pos) => tie break: end < start
+            let a_is_end = !wh_a.is_start();
+            let b_is_end = !wh_b.is_start();
+            match (a_is_end, b_is_end) {
+                // If both are ends or both are starts, just pick either. We'll pick `a`.
+                (true, true) | (false, false) => Some((wh_a, ev_a)),
+                // If only one is end, that one is “smaller”
+                (true, false) => Some((wh_a, ev_a)),
+                (false, true) => Some((wh_b, ev_b)),
+            }
+        }
+    }
 }

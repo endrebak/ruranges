@@ -1,4 +1,3 @@
-
 use std::time::Instant;
 
 use crate::sorts;
@@ -9,7 +8,6 @@ pub fn sweep_line_boundary(
     ends: &[i64],
     idxs: &[i64],
 ) -> (Vec<i64>, Vec<i64>, Vec<i64>, Vec<i64>) {
-
     let mut out_indices = Vec::with_capacity(chrs.len());
     let mut out_starts = Vec::with_capacity(chrs.len());
     let mut out_ends = Vec::with_capacity(chrs.len());
@@ -44,7 +42,6 @@ pub fn sweep_line_boundary(
         prev_idx = e.idx;
         current_cluster_count += 1;
     }
-
 
     out_indices.push(final_idx);
     out_starts.push(current_start);

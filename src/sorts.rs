@@ -8,7 +8,13 @@ use crate::ruranges_structs::MinEvent;
 use crate::ruranges_structs::SplicedSubsequenceInterval;
 use crate::ruranges_structs::SubsequenceInterval;
 
-pub fn build_intervals(chrs: &[i64], starts: &[i64], ends: &[i64], idxs: &[i64], slack: i64) -> Vec<Interval> {
+pub fn build_intervals(
+    chrs: &[i64],
+    starts: &[i64],
+    ends: &[i64],
+    idxs: &[i64],
+    slack: i64,
+) -> Vec<Interval> {
     let mut intervals: Vec<Interval> = Vec::with_capacity(chrs.len());
     for i in 0..chrs.len() {
         intervals.push(Interval {
@@ -22,13 +28,23 @@ pub fn build_intervals(chrs: &[i64], starts: &[i64], ends: &[i64], idxs: &[i64],
     intervals
 }
 
-pub fn build_subsequence_intervals(chrs: &[i64], starts: &[i64], ends: &[i64], idxs: &[i64], strand_flags: &[bool]) -> Vec<SplicedSubsequenceInterval> {
+pub fn build_subsequence_intervals(
+    chrs: &[i64],
+    starts: &[i64],
+    ends: &[i64],
+    idxs: &[i64],
+    strand_flags: &[bool],
+) -> Vec<SplicedSubsequenceInterval> {
     let mut intervals: Vec<SplicedSubsequenceInterval> = Vec::with_capacity(chrs.len());
     for i in 0..chrs.len() {
         intervals.push(SplicedSubsequenceInterval {
             chr: chrs[i],
-            start: if strand_flags[i] { starts[i] } else { - starts[i]},  // so that negative strand intervals are sorted in the correct direction
-            end: if strand_flags[i] { ends[i] } else { - ends[i]},  // we will find the absolute value when using them
+            start: if strand_flags[i] {
+                starts[i]
+            } else {
+                -starts[i]
+            }, // so that negative strand intervals are sorted in the correct direction
+            end: if strand_flags[i] { ends[i] } else { -ends[i] }, // we will find the absolute value when using them
             idx: idxs[i],
             forward_strand: strand_flags[i],
             temp_cumsum: 0,
@@ -47,13 +63,20 @@ pub fn build_sequence_intervals(
     strand_flags: &[bool],
     force_plus_strand: bool,
 ) -> Vec<SubsequenceInterval> {
-
     let mut intervals: Vec<SubsequenceInterval> = Vec::with_capacity(chrs.len());
     for i in 0..chrs.len() {
         intervals.push(SubsequenceInterval {
             group_id: chrs[i],
-            start: if force_plus_strand || strand_flags[i] { starts[i] } else { - starts[i] },  // so that negative strand intervals are sorted in the correct direction
-            end: if force_plus_strand || strand_flags[i] { ends[i] } else { - ends[i] },  // we will find the absolute value when using them
+            start: if force_plus_strand || strand_flags[i] {
+                starts[i]
+            } else {
+                -starts[i]
+            }, // so that negative strand intervals are sorted in the correct direction
+            end: if force_plus_strand || strand_flags[i] {
+                ends[i]
+            } else {
+                -ends[i]
+            }, // we will find the absolute value when using them
             idx: idxs[i],
             forward_strand: strand_flags[i],
         });
@@ -81,7 +104,6 @@ pub fn build_sorted_intervals(
     intervals
 }
 
-
 pub fn build_sorted_subsequence_intervals(
     chrs: &[i64],
     starts: &[i64],
@@ -106,7 +128,8 @@ pub fn build_sorted_sequence_intervals(
     strand_flags: &[bool],
     force_plus_strand: bool,
 ) -> Vec<SubsequenceInterval> {
-    let mut intervals = build_sequence_intervals(chrs, starts, ends, idxs, strand_flags, force_plus_strand);
+    let mut intervals =
+        build_sequence_intervals(chrs, starts, ends, idxs, strand_flags, force_plus_strand);
 
     sort_by_key(&mut intervals, |i| i.end);
     sort_by_key(&mut intervals, |i| i.start);
@@ -181,7 +204,6 @@ pub fn align_interval_collections_on_chromosome(
     result
 }
 
-
 pub fn build_sorted_events_single_position(
     chrs: &[i64],
     pos: &[i64],
@@ -195,10 +217,14 @@ pub fn build_sorted_events_single_position(
 
     // Convert set1 intervals into events
     for i in 0..chrs.len() {
-        let pos = if start {pos[i] - slack} else {pos[i] + slack};
+        let pos = if start {
+            pos[i] - slack
+        } else {
+            pos[i] + slack
+        };
         events.push(Event {
             chr: chrs[i],
-            pos: if negative_position {-pos} else {pos},
+            pos: if negative_position { -pos } else { pos },
             is_start: start,
             first_set: first_set,
             idx: idxs[i],
@@ -269,11 +295,11 @@ pub fn build_sorted_events_single_collection_separate_outputs(
     }
     for i in 0..chrs.len() {
         {
-        out_ends.push(MinEvent {
-            chr: chrs[i],
-            pos: ends[i] + slack,
-            idx: idxs[i],
-        });
+            out_ends.push(MinEvent {
+                chr: chrs[i],
+                pos: ends[i] + slack,
+                idx: idxs[i],
+            });
         }
     }
 

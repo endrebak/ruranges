@@ -6,7 +6,6 @@ pub struct Interval {
     pub idx: i64,
 }
 
-
 /// An "event" in the sweep line:
 /// - `pos`: the coordinate (start or end of an interval)
 /// - `is_start`: true if it's a start event, false if it's an end event
@@ -26,6 +25,12 @@ pub struct MinEvent {
     pub chr: i64,
     pub pos: i64,
     pub idx: i64,
+}
+
+#[derive(Debug, Clone, Hash)]
+pub struct OverlapPair {
+    pub idx: i64,
+    pub idx2: i64,
 }
 
 #[derive(Debug, Clone, Hash)]
@@ -60,9 +65,9 @@ pub struct SplicedSubsequenceInterval {
 /// A simple struct to hold each interval's data for "subsequence" logic.
 #[derive(Clone)]
 pub struct SubsequenceInterval {
-    pub group_id: i64,            // grouping ID
-    pub start: i64,          // genomic start
-    pub end: i64,            // genomic end
-    pub idx: i64,            // e.g. row index or something else
-    pub forward_strand: bool // true => + strand, false => - strand
+    pub group_id: i64,        // grouping ID
+    pub start: i64,           // genomic start
+    pub end: i64,             // genomic end
+    pub idx: i64,             // e.g. row index or something else
+    pub forward_strand: bool, // true => + strand, false => - strand
 }

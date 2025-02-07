@@ -1,5 +1,3 @@
-
-
 use crate::sorts;
 
 pub fn sweep_line_cluster(
@@ -9,7 +7,6 @@ pub fn sweep_line_cluster(
     idxs: &[i64],
     slack: i64,
 ) -> (Vec<i64>, Vec<i64>) {
-
     let mut indices = Vec::with_capacity(chrs.len());
     let mut cluster_ids = Vec::with_capacity(chrs.len());
 

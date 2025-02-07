@@ -2,7 +2,6 @@ use rustc_hash::FxHashMap;
 
 use crate::{ruranges_structs::Event, sorts};
 
-
 pub fn sweep_line_complement(
     chrs: &[i64],
     starts: &[i64],
@@ -23,9 +22,8 @@ pub fn sweep_line_complement(
     }
 
     // Build your events array, sorted by chr and pos
-    let events: Vec<Event> = sorts::build_sorted_events_single_collection(
-        chrs, starts, ends, idxs, slack
-    );
+    let events: Vec<Event> =
+        sorts::build_sorted_events_single_collection(chrs, starts, ends, idxs, slack);
 
     // Initialize
     let mut current_chr = events[0].chr;
@@ -34,7 +32,7 @@ pub fn sweep_line_complement(
     let mut in_complement = include_first_interval;
     // Start the first hole at position 0 of the chromosome (only matters if `in_complement == true`)
     let mut current_start = 0_i64;
-    let mut current_index= 0_i64;
+    let mut current_index = 0_i64;
 
     for e in events {
         // If we hit a new chromosome
