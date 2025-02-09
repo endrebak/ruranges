@@ -22,7 +22,7 @@ pub fn sweep_line_non_overlaps(
     }
 
     // Build up the event list in ascending order (same as before)
-    let events = sorts::build_sorted_events(
+    let events = sorts::build_sorted_events_idxs(
         chrs, starts, ends, idxs, chrs2, starts2, ends2, idxs2, slack,
     );
 

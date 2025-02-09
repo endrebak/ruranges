@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use radsort::sort_by_key;
 
 use crate::ruranges_structs::Event;
+use crate::ruranges_structs::EventUsize;
 use crate::ruranges_structs::Interval;
 use crate::ruranges_structs::MinEvent;
 use crate::ruranges_structs::SplicedSubsequenceInterval;
@@ -318,6 +319,59 @@ pub fn build_sorted_events_single_collection_separate_outputs(
 }
 
 pub fn build_sorted_events(
+    chrs: &[i64],
+    starts: &[i64],
+    ends: &[i64],
+    chrs2: &[i64],
+    starts2: &[i64],
+    ends2: &[i64],
+    slack: i64,
+) -> Vec<EventUsize> {
+    let mut events: Vec<EventUsize> = Vec::with_capacity(2 * (chrs.len() + chrs2.len()));
+
+    // Convert set1 intervals into events
+    for i in 0..chrs.len() {
+        events.push(EventUsize {
+            chr: chrs[i],
+            pos: starts[i] - slack,
+            is_start: true,
+            first_set: true,
+            idx: i,
+        });
+        events.push(EventUsize {
+            chr: chrs[i],
+            pos: ends[i] + slack,
+            is_start: false,
+            first_set: true,
+            idx: i,
+        });
+    }
+
+    for j in 0..chrs2.len() {
+        events.push(EventUsize {
+            chr: chrs2[j],
+            pos: starts2[j],
+            is_start: true,
+            first_set: false,
+            idx: j,
+        });
+        events.push(EventUsize {
+            chr: chrs2[j],
+            pos: ends2[j],
+            is_start: false,
+            first_set: false,
+            idx: j,
+        });
+    }
+
+    sort_by_key(&mut events, |e| e.is_start);
+    sort_by_key(&mut events, |e| e.pos);
+    sort_by_key(&mut events, |e| e.chr);
+
+    events
+}
+
+pub fn build_sorted_events_idxs(
     chrs: &[i64],
     starts: &[i64],
     ends: &[i64],

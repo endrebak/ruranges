@@ -1,4 +1,5 @@
 use std::str::FromStr;
+use std::time::Instant;
 
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::prelude::*;
@@ -35,15 +36,13 @@ pub fn chromsweep_numpy(
     ends2: PyReadonlyArray1<i64>,
     idxs2: PyReadonlyArray1<i64>,
     slack: i64,
-) -> PyResult<(Py<PyArray1<i64>>, Py<PyArray1<i64>>)> {
+) -> PyResult<(Py<PyArray1<usize>>, Py<PyArray1<usize>>)> {
     let chrs_slice = chrs.as_slice()?;
     let starts_slice = starts.as_slice()?;
     let ends_slice = ends.as_slice()?;
-    let idxs_slice = idxs.as_slice()?;
     let chrs_slice2 = chrs2.as_slice()?;
     let starts_slice2 = starts2.as_slice()?;
     let ends_slice2 = ends2.as_slice()?;
-    let idxs_slice2 = idxs2.as_slice()?;
 
     // let (sorted_starts, sorted_ends) = build_sorted_events_single_collection_separate_outputs(
     //     chrs_slice,
@@ -67,18 +66,17 @@ pub fn chromsweep_numpy(
         chrs_slice,
         starts_slice,
         ends_slice,
-        idxs_slice,
         chrs_slice2,
         starts_slice2,
         ends_slice2,
-        idxs_slice2,
         slack,
     );
 
-    Ok((
+    let res = Ok((
         result.0.into_pyarray(py).to_owned().into(),
         result.1.into_pyarray(py).to_owned().into(),
-    ))
+    ));
+    res
 }
 
 #[pyfunction]
@@ -105,6 +103,7 @@ pub fn nearest_numpy(
     let ends_slice2 = ends2.as_slice()?;
     let idxs_slice2 = idxs2.as_slice()?;
 
+
     let result = nearest(
         chrs_slice,
         starts_slice,
@@ -118,11 +117,12 @@ pub fn nearest_numpy(
         k,
         include_overlaps,
     );
-    Ok((
+    let res = Ok((
         result.0.into_pyarray(py).to_owned().into(),
         result.1.into_pyarray(py).to_owned().into(),
         result.2.into_pyarray(py).to_owned().into(),
-    ))
+    ));
+    res
 }
 
 #[pyfunction]

@@ -6,6 +6,14 @@ pub struct Interval {
     pub idx: i64,
 }
 
+#[derive(Debug, Clone, Hash)]
+pub struct EventUsize {
+    pub chr: i64,
+    pub pos: i64,
+    pub is_start: bool,
+    pub first_set: bool,
+    pub idx: usize,
+}
 /// An "event" in the sweep line:
 /// - `pos`: the coordinate (start or end of an interval)
 /// - `is_start`: true if it's a start event, false if it's an end event

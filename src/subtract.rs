@@ -18,7 +18,7 @@ pub fn sweep_line_subtract(
     }
 
     // Build sorted events
-    let events = sorts::build_sorted_events(
+    let events = sorts::build_sorted_events_idxs(
         chrs1, starts1, ends1, idxs1, chrs2, starts2, ends2, idxs2, 0,
     );
 

@@ -1,7 +1,6 @@
 use std::time::Instant;
 
 use crate::{
-    nearest_unique_k::sweep_line_k_nearest,
     overlaps::{self, sweep_line_overlaps_nearest},
     ruranges_structs::{MinEvent, Nearest, OverlapPair},
     sorts::build_sorted_events_single_collection_separate_outputs,

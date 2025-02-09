@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use rustc_hash::FxHashSet;
 
 use crate::ruranges_structs::{MinEvent, OverlapPair};
@@ -120,21 +122,6 @@ pub fn sweep_line_overlaps_nearest(
     out_idxs
 }
 
-#[derive(Debug, Clone, Hash)]
-pub struct Nearest {
-    pub distance: i64,
-    pub idx2: i64,
-}
-
-#[derive(Debug, Clone, Hash)]
-pub struct NearestIntervals {
-    pub idx1: i64,
-    pub left_distances: Vec<i64>,
-    pub left_pos: Vec<i64>,
-    pub overlaps: Vec<i64>,
-    pub right_distances: Vec<i64>,
-    pub right_pos: Vec<i64>,
-}
 
 /// Returns all overlapping pairs (idx1, idx2) between intervals in set1 and set2.
 /// This uses a line-sweep / active-set approach.
@@ -149,13 +136,11 @@ pub fn sweep_line_overlaps2(
     chrs: &[i64],
     starts: &[i64],
     ends: &[i64],
-    idxs: &[i64],
     chrs2: &[i64],
     starts2: &[i64],
     ends2: &[i64],
-    idxs2: &[i64],
     slack: i64,
-) -> (Vec<i64>, Vec<i64>) {
+) -> (Vec<usize>, Vec<usize>) {
     // We'll collect all cross overlaps here
     let mut overlaps = Vec::new();
     let mut overlaps2 = Vec::new();
@@ -165,7 +150,7 @@ pub fn sweep_line_overlaps2(
     };
 
     let events = sorts::build_sorted_events(
-        chrs, starts, ends, idxs, chrs2, starts2, ends2, idxs2, slack,
+        chrs, starts, ends, chrs2, starts2, ends2, slack,
     );
 
     // Active sets
@@ -214,71 +199,6 @@ pub fn sweep_line_overlaps2(
     (overlaps, overlaps2)
 }
 
-fn nearest_intervals_to_the_left(
-    chr: i64,
-    current_interval_pos: i64,
-    sorted_ends2: &[MinEvent],
-    i4: usize,
-    k: usize,
-) -> Vec<Nearest> {
-    // We'll look backward through the intervals that ended in set2,
-    // which are at positions [0..i4] in sorted_ends2.
-    // We want up to k intervals on the same chromosome (chr).
-    let mut count = 0;
-    let mut nearest: Vec<Nearest> = Vec::new();
-
-    // i4 is the "next to process" in ends2, so the last *finished* event is i4 - 1.
-    // Make sure we don't panic if i4 == 0.
-    let mut idx = i4;
-    while idx > 0 && count < k {
-        idx -= 1;
-        let ev = &sorted_ends2[idx];
-        // If we only want intervals on the same chromosome, break if we see a mismatch.
-        if ev.chr != chr {
-            break;
-        }
-        // ev.idx is the index of the ended interval in set2
-        nearest.push(Nearest {
-            distance: ev.pos - (current_interval_pos + 1),
-            idx2: ev.idx,
-        });
-        count += 1;
-    }
-    nearest
-}
-
-fn nearest_intervals_to_the_right(
-    chr: i64,
-    current_interval_pos: i64,
-    sorted_starts2: &[MinEvent],
-    i3: usize,
-    k: usize,
-) -> Vec<Nearest> {
-    // We'll look backward through the intervals that ended in set2,
-    // which are at positions [0..i4] in sorted_ends2.
-    // We want up to k intervals on the same chromosome (chr).
-    let mut count = 0;
-    let mut nearest: Vec<Nearest> = Vec::new();
-
-    // i4 is the "next to process" in ends2, so the last *finished* event is i4 - 1.
-    // Make sure we don't panic if i4 == 0.
-    let mut idx = i3;
-    while sorted_starts2.len() > idx && count < k {
-        let ev = &sorted_starts2[idx];
-        // If we only want intervals on the same chromosome, break if we see a mismatch.
-        if ev.chr != chr {
-            break;
-        }
-        // ev.idx is the index of the ended interval in set2
-        nearest.push(Nearest {
-            distance: (current_interval_pos + 1) - ev.pos,
-            idx2: ev.idx,
-        });
-        idx += 1;
-        count += 1;
-    }
-    nearest
-}
 
 fn pick_winner_of_four<'a>(
     s1: Option<(WhichList, &'a MinEvent)>,

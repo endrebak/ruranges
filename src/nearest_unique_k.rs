@@ -312,7 +312,7 @@ pub fn sweep_line_overlaps_merged_heap(
     }
 
     // We'll build a combined sorted list of events.
-    let events = sorts::build_sorted_events(
+    let events = sorts::build_sorted_events_idxs(
         chrs, starts, ends, idxs, chrs2, starts2, ends2, idxs2, slack,
     );
     let n = events.len();
