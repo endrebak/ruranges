@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use crate::{
-    overlaps::{self, sweep_line_overlaps_nearest},
+    overlaps::{sweep_line_overlaps, sweep_line_overlaps_nearest},
     ruranges_structs::{MinEvent, Nearest, OverlapPair},
     sorts::build_sorted_events_single_collection_separate_outputs,
 };
@@ -182,139 +182,250 @@ pub fn nearest_intervals_to_the_left(
     output
 }
 
-/// Merges three lists:
-///  1) Overlaps (distance = 0),
-///  2) Nearest-left (distance >= 1 in ascending order),
-///  3) Nearest-right (distance >= 1 in ascending order).
-///
-/// We collect up to `k` *distinct* distances.  If multiple items share
-/// a distance, we keep them all.  Overlaps count as distance=0 (the
-/// first distinct distance), and the "nearest" entries are offset by +1
-/// when emitted so that distance=1 => 2, distance=2 => 3, etc.
-///
-/// Returns three parallel vectors:
-///  - `idx1_vec`: i64
-///  - `idx2_vec`: i64
-///  - `dist_vec`: i64
-///
-/// No extra sorting or temporary vectors are required.
-pub fn merge_three_way(
-    overlaps: &[OverlapPair],  // all distance=0
-    nearest_left: &[Nearest],  // sorted ascending by .distance
-    nearest_right: &[Nearest], // sorted ascending by .distance
-    k: usize,
-) -> (Vec<i64>, Vec<i64>, Vec<i64>) {
-    // Reserve enough for all possible results (upper bound).
-    let capacity = overlaps.len() + nearest_left.len() + nearest_right.len();
-    let mut idx1_vec = Vec::with_capacity(capacity);
-    let mut idx2_vec = Vec::with_capacity(capacity);
-    let mut dist_vec = Vec::with_capacity(capacity);
-
-    // Indices for each of the three inputs
-    let (mut i, mut j, mut r) = (0_usize, 0_usize, 0_usize);
-
-    // We'll track how many *distinct* distances we've emitted.
-    let mut distinct_count = 0_usize;
-    let mut last_dist: Option<i64> = None;
-
-    loop {
-        // 1) Distance from the "overlaps" side is always 0, if any remain.
-        let dist_o = if i < overlaps.len() { 0 } else { i64::MAX };
-
-        // 2) Distance from the "nearest_left" side is `nearest_left[j].distance + 1`.
-        let dist_l = if j < nearest_left.len() {
-            nearest_left[j].distance + 1
-        } else {
-            i64::MAX
-        };
-
-        // 3) Distance from the "nearest_right" side is `nearest_right[r].distance + 1`.
-        let dist_r = if r < nearest_right.len() {
-            nearest_right[r].distance + 1
-        } else {
-            i64::MAX
-        };
-
-        // Pick the minimum distance among the three
-        let current_dist = dist_o.min(dist_l.min(dist_r));
-        if current_dist == i64::MAX {
-            // All lists are exhausted
-            break;
-        }
-
-        // Check if this is a new distinct distance
-        if last_dist.map_or(true, |prev| prev != current_dist) {
-            distinct_count += 1;
-            if distinct_count > k {
-                // We've already reached k distinct distances
-                break;
-            }
-            last_dist = Some(current_dist);
-        }
-
-        // Pull all Overlaps that match `current_dist` (which can be 0 only)
-        while i < overlaps.len() && current_dist == 0 {
-            idx1_vec.push(overlaps[i].idx);
-            idx2_vec.push(overlaps[i].idx2);
-            dist_vec.push(0);
-            i += 1;
-        }
-
-        // Pull all Nearest-Left that match `current_dist`
-        while j < nearest_left.len() && (nearest_left[j].distance + 1) == current_dist {
-            idx1_vec.push(nearest_left[j].idx as i64);
-            idx2_vec.push(nearest_left[j].idx2 as i64);
-            dist_vec.push(current_dist);
-            j += 1;
-        }
-
-        // Pull all Nearest-Right that match `current_dist`
-        while r < nearest_right.len() && (nearest_right[r].distance + 1) == current_dist {
-            idx1_vec.push(nearest_right[r].idx as i64);
-            idx2_vec.push(nearest_right[r].idx2 as i64);
-            dist_vec.push(current_dist);
-            r += 1;
-        }
-    }
-
-    (idx1_vec, idx2_vec, dist_vec)
-}
+/// Merges th
 
 pub fn nearest(
     chrs: &[i64],
     starts: &[i64],
     ends: &[i64],
-    idxs: &[i64],
     chrs2: &[i64],
     starts2: &[i64],
     ends2: &[i64],
-    idxs2: &[i64],
     slack: i64,
     k: usize,
     include_overlaps: bool,
-) -> (Vec<i64>, Vec<i64>, Vec<i64>) {
+) -> (Vec<usize>, Vec<usize>, Vec<i64>) {
     let start = Instant::now();
-    let (sorted_starts, sorted_ends) =
-        build_sorted_events_single_collection_separate_outputs(chrs, starts, ends, idxs, slack);
-    let (sorted_starts2, sorted_ends2) =
-        build_sorted_events_single_collection_separate_outputs(chrs2, starts2, ends2, idxs2, 0);
-    println!("sorts {:.2?}", start.elapsed());
-
     let overlaps = if include_overlaps {
-        sweep_line_overlaps_nearest(&sorted_starts, &sorted_ends, &sorted_starts2, &sorted_ends2)
+        sweep_line_overlaps_nearest(
+            chrs,
+            starts,
+            ends,
+            chrs2,
+            starts2,
+            ends2,
+            slack,
+        )
     } else {
         Vec::new()
     };
-    println!("overlaps {:.2?}", start.elapsed());
-    println!("overlaps {}", overlaps.len());
-    let nearest_left = nearest_intervals_to_the_left(sorted_ends, sorted_starts2, k);
-    println!("left {:.2?}", start.elapsed());
-    println!("left {}", nearest_left.len());
-    let nearest_right = nearest_intervals_to_the_right(sorted_starts, sorted_ends2, k);
-    println!("right {:.2?}", start.elapsed());
-    println!("right {}", nearest_right.len());
+    println!("{}", overlaps.len());
+    println!("{:?}", overlaps);
+    println!("{}", chrs.len());
+    let (sorted_starts, sorted_ends) =
+        build_sorted_events_single_collection_separate_outputs(chrs, starts, ends, slack);
+    let (sorted_starts2, sorted_ends2) =
+        build_sorted_events_single_collection_separate_outputs(chrs2, starts2, ends2, 0);
+    println!("sorts {:.2?}", start.elapsed());
 
-    let merged = merge_three_way(&overlaps, &nearest_left, &nearest_right, k);
+    println!("sorted_starts {:?}", sorted_starts);
+    println!("sorted_ends {:?}", sorted_ends);
+    println!("sorted_starts2 {:?}", sorted_starts2);
+    println!("sorted_ends2 {:?}", sorted_ends2);
+    let mut nearest_left = nearest_intervals_to_the_left(sorted_starts, sorted_ends2, k);
+    nearest_left.sort_by_key(|n| (n.idx, n.distance));
+    println!("left {:?}", nearest_left);
+    let mut nearest_right = nearest_intervals_to_the_right(sorted_ends, sorted_starts2, k);
+    nearest_right.sort_by_key(|n| (n.idx, n.distance));
+    println!("right {:?}", nearest_right);
+
+    let merged = merge_three_way_by_index_distance(&overlaps, &nearest_left, &nearest_right, k);
+    println!("merged {:?}", merged);
     println!("merge {:.2?}", start.elapsed());
     merged
+}
+
+
+/// Merges three sources of intervals, grouped by `idx` (i.e. `idx1` in overlaps).
+/// For each unique `idx`, it returns up to `k` *distinct* distances (including
+/// all intervals at those distances). Overlaps are treated as distance=0 (or 1).
+///
+/// The data is assumed to be sorted in ascending order by `(idx, distance)`.
+pub fn merge_three_way_by_index_distance(
+    overlaps: &[OverlapPair],  // sorted by idx1
+    nearest_left: &[Nearest],   // sorted by (idx, distance)
+    nearest_right: &[Nearest],  // sorted by (idx, distance)
+    k: usize,
+) -> (Vec<usize>, Vec<usize>, Vec<i64>) {
+    // We'll return tuples: (idx, idx2, distance).
+    // You can adapt if you want a custom struct instead.
+    let mut idxs1 = Vec::new();
+    let mut idxs2 = Vec::new();
+    let mut distance = Vec::new();
+
+    // Pointers over each input
+    let (mut i, mut j, mut r) = (0_usize, 0_usize, 0_usize);
+
+    // Outer loop: pick the smallest index among the three lists
+    while i < overlaps.len() || j < nearest_left.len() || r < nearest_right.len() {
+        // Current index (None if that list is exhausted)
+        let idx_o = overlaps.get(i).map(|o| o.idx);
+        let idx_l = nearest_left.get(j).map(|n| n.idx);
+        let idx_r = nearest_right.get(r).map(|n| n.idx);
+
+        // If all three are None, we're done
+        let current_idx = match (idx_o, idx_l, idx_r) {
+            (None, None, None) => break,
+            (Some(a), Some(b), Some(c)) => a.min(b.min(c)),
+            (Some(a), Some(b), None)    => a.min(b),
+            (Some(a), None, Some(c))    => a.min(c),
+            (None, Some(b), Some(c))    => b.min(c),
+            (Some(a), None, None)       => a,
+            (None, Some(b), None)       => b,
+            (None, None, Some(c))       => c,
+        };
+
+        // Gather all overlaps for current_idx
+        let i_start = i;
+        while i < overlaps.len() && overlaps[i].idx == current_idx {
+            i += 1;
+        }
+        let overlaps_slice = &overlaps[i_start..i];
+
+        // Gather all nearest_left for current_idx
+        let j_start = j;
+        while j < nearest_left.len() && nearest_left[j].idx == current_idx {
+            j += 1;
+        }
+        let left_slice = &nearest_left[j_start..j];
+
+        // Gather all nearest_right for current_idx
+        let r_start = r;
+        while r < nearest_right.len() && nearest_right[r].idx == current_idx {
+            r += 1;
+        }
+        let right_slice = &nearest_right[r_start..r];
+
+        // Now we have three *already-sorted* slices (by distance) for this index:
+        //  1) overlaps_slice (distance=0 or 1, or if you store it in OverlapPair, read it)
+        //  2) left_slice (sorted ascending by distance)
+        //  3) right_slice (sorted ascending by distance)
+        //
+        // We'll do a 3-way merge *by distance*, collecting up to k *distinct* distances.
+        // If you store overlap distances in OverlapPair, you can read them;
+        // otherwise, assume overlap distance=0.
+
+        let mut used_distances = std::collections::HashSet::new();
+        let mut distinct_count = 0;
+
+        let (mut oi, mut lj, mut rr) = (0, 0, 0);
+
+        // Helper closures to peek distance from each slice
+        let mut overlap_dist = |ix: usize| -> i64 {
+            // If you store distance in OverlapPair, return that. Otherwise 0 or 1.
+            // For the example, let's assume actual Overlap distance=0:
+            0
+        };
+        let mut left_dist = |ix: usize| -> i64 {
+            left_slice[ix].distance
+        };
+        let mut right_dist = |ix: usize| -> i64 {
+            right_slice[ix].distance
+        };
+
+        // Inner loop: pick the next *smallest* distance among the three slices
+        while oi < overlaps_slice.len() || lj < left_slice.len() || rr < right_slice.len() {
+            // Peek next distance (or i64::MAX if none)
+            let d_o = if oi < overlaps_slice.len() {
+                overlap_dist(oi)
+            } else {
+                i64::MAX
+            };
+            let d_l = if lj < left_slice.len() {
+                left_dist(lj)
+            } else {
+                i64::MAX
+            };
+            let d_r = if rr < right_slice.len() {
+                right_dist(rr)
+            } else {
+                i64::MAX
+            };
+
+            let smallest = d_o.min(d_l.min(d_r));
+            if smallest == i64::MAX {
+                // no more items
+                break;
+            }
+
+            // We'll pull everything from Overlaps that has distance == smallest
+            while oi < overlaps_slice.len() {
+                let dcur = overlap_dist(oi);
+                if dcur == smallest {
+                    // If this is a *new* distance (not in used_distances),
+                    // we check if it would exceed k distinct distances
+                    if !used_distances.contains(&dcur) {
+                        distinct_count += 1;
+                        if distinct_count > k {
+                            // no new distances allowed
+                            break;
+                        }
+                        used_distances.insert(dcur);
+                    }
+                    // Add to result
+                    let OverlapPair { idx, idx2 } = overlaps_slice[oi];
+                    idxs1.push(idx);
+                    idxs2.push(idx2);
+                    distance.push(dcur);
+                    oi += 1;
+                } else {
+                    break;
+                }
+            }
+            if distinct_count > k {
+                break;
+            }
+
+            // Pull everything from Left that has distance == smallest
+            while lj < left_slice.len() {
+                let dcur = left_dist(lj);
+                if dcur == smallest {
+                    if !used_distances.contains(&dcur) {
+                        distinct_count += 1;
+                        if distinct_count > k {
+                            break;
+                        }
+                        used_distances.insert(dcur);
+                    }
+                    let item = &left_slice[lj];
+                    idxs1.push(item.idx);
+                    idxs2.push(item.idx2);
+                    distance.push(dcur);
+                    lj += 1;
+                } else {
+                    break;
+                }
+            }
+            if distinct_count > k {
+                break;
+            }
+
+            // Pull everything from Right that has distance == smallest
+            while rr < right_slice.len() {
+                let dcur = right_dist(rr);
+                if dcur == smallest {
+                    if !used_distances.contains(&dcur) {
+                        distinct_count += 1;
+                        if distinct_count > k {
+                            break;
+                        }
+                        used_distances.insert(dcur);
+                    }
+                    let item = &right_slice[rr];
+                    idxs1.push(item.idx);
+                    idxs2.push(item.idx2);
+                    distance.push(dcur);
+                    rr += 1;
+                } else {
+                    break;
+                }
+            }
+            if distinct_count > k {
+                break;
+            }
+        }
+        // done collecting up to k distinct distances for this index
+    }
+
+    (idxs1, idxs2, distance)
 }

@@ -1,5 +1,3 @@
-use std::time::Instant;
-
 use rustc_hash::FxHashSet;
 
 use crate::ruranges_structs::{MinEvent, OverlapPair};
@@ -25,104 +23,6 @@ impl WhichList {
     }
 }
 
-pub fn sweep_line_overlaps_nearest(
-    sorted_starts: &[MinEvent],  // set 1 starts
-    sorted_ends: &[MinEvent],    // set 1 ends
-    sorted_starts2: &[MinEvent], // set 2 starts
-    sorted_ends2: &[MinEvent],   // set 2 ends
-) -> Vec<OverlapPair> {
-    let mut out_idxs = Vec::new();
-
-    // Quick check: if no starts exist in either set, no overlaps.
-    if sorted_starts.is_empty() || sorted_starts2.is_empty() {
-        return out_idxs;
-    }
-
-    // Active intervals for set1, set2
-    let mut active1 = FxHashSet::default();
-    let mut active2 = FxHashSet::default();
-
-    // Pointers into each list
-    let mut i1 = 0usize; // pointer into sorted_starts  (set 1)
-    let mut i2 = 0usize; // pointer into sorted_starts2 (set 2)
-    let mut i3 = 0usize; // pointer into sorted_ends    (set 1)
-    let mut i4 = 0usize; // pointer into sorted_ends2   (set 2)
-
-    // Figure out the very first chromosome we encounter (if any):
-    // We'll look at the heads of each list and pick the lexicographically smallest.
-    let first_candidate = pick_winner_of_four(
-        sorted_starts.get(i1).map(|e| (WhichList::StartSet1, e)),
-        sorted_starts2.get(i2).map(|e| (WhichList::StartSet2, e)),
-        sorted_ends.get(i3).map(|e| (WhichList::EndSet1, e)),
-        sorted_ends2.get(i4).map(|e| (WhichList::EndSet2, e)),
-    );
-
-    // Unwrap the first candidate’s chromosome
-    let mut current_chr = first_candidate.unwrap().1.chr;
-
-    // Main sweep-line loop
-    while i1 < sorted_starts.len()
-        || i2 < sorted_starts2.len()
-        || i3 < sorted_ends.len()
-        || i4 < sorted_ends2.len()
-    {
-        let (which_list, event) = if let Some((which_list, event)) = pick_winner_of_four(
-            sorted_starts.get(i1).map(|e| (WhichList::StartSet1, e)),
-            sorted_starts2.get(i2).map(|e| (WhichList::StartSet2, e)),
-            sorted_ends.get(i3).map(|e| (WhichList::EndSet1, e)),
-            sorted_ends2.get(i4).map(|e| (WhichList::EndSet2, e)),
-        ) {
-            (which_list, event)
-        } else {
-            break;
-        };
-
-        // If we've moved to a new chromosome, reset active sets
-        if event.chr != current_chr {
-            active1.clear();
-            active2.clear();
-            current_chr = event.chr;
-        }
-
-        // Advance the pointer for whichever list we took an event from
-        match which_list {
-            WhichList::StartSet1 => {
-                for &idx2 in active2.iter() {
-                    out_idxs.push(OverlapPair {
-                        idx: event.idx,
-                        idx2: idx2,
-                    })
-                }
-                // Now add it to active1
-                active1.insert(event.idx);
-                i1 += 1
-            }
-            WhichList::StartSet2 => {
-                for &idx1 in active1.iter() {
-                    out_idxs.push(OverlapPair {
-                        idx: idx1,
-                        idx2: event.idx,
-                    })
-                }
-                // Now add it to active2
-                active2.insert(event.idx);
-                i2 += 1
-            }
-            WhichList::EndSet1 => {
-                active1.remove(&event.idx);
-                i3 += 1
-            }
-            WhichList::EndSet2 => {
-                active2.remove(&event.idx);
-                i4 += 1
-            }
-        }
-    }
-
-    out_idxs
-}
-
-
 /// Returns all overlapping pairs (idx1, idx2) between intervals in set1 and set2.
 /// This uses a line-sweep / active-set approach.
 ///
@@ -132,7 +32,7 @@ pub fn sweep_line_overlaps_nearest(
 ///   3. Maintain active sets (for set1 and set2). For a start event in set1,
 ///      record overlap with all active in set2, then insert into active1. Etc.
 ///   4. Return the list of all cross-set overlaps.
-pub fn sweep_line_overlaps2(
+pub fn sweep_line_overlaps(
     chrs: &[i64],
     starts: &[i64],
     ends: &[i64],
@@ -197,6 +97,34 @@ pub fn sweep_line_overlaps2(
     }
 
     (overlaps, overlaps2)
+}
+
+pub fn sweep_line_overlaps_nearest(
+    chrs: &[i64],
+    starts: &[i64],
+    ends: &[i64],
+    chrs2: &[i64],
+    starts2: &[i64],
+    ends2: &[i64],
+    slack: i64,
+) -> Vec<OverlapPair> {
+    // We'll collect all cross overlaps here
+    let (idx1s, idxs2) = sweep_line_overlaps(chrs, starts, ends, chrs2, starts2, ends2, slack);
+    println!("after sweep line overlaps {}", idx1s.len());
+
+    let mut overlaps = Vec::new();
+
+    for i in 0..idx1s.len() {
+        overlaps.push(
+            OverlapPair {
+                idx: idx1s[i],
+                idx2: idxs2[i],
+            }
+        );
+
+    }
+
+    overlaps
 }
 
 

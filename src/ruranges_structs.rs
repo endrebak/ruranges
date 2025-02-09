@@ -32,20 +32,20 @@ pub struct Event {
 pub struct MinEvent {
     pub chr: i64,
     pub pos: i64,
-    pub idx: i64,
+    pub idx: usize,
 }
 
 #[derive(Debug, Clone, Hash)]
 pub struct OverlapPair {
-    pub idx: i64,
-    pub idx2: i64,
+    pub idx: usize,
+    pub idx2: usize,
 }
 
 #[derive(Debug, Clone, Hash)]
 pub struct Nearest {
     pub distance: i64,
-    pub idx: i64,
-    pub idx2: i64,
+    pub idx: usize,
+    pub idx2: usize,
 }
 
 #[derive(Debug, Clone)]

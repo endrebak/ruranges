@@ -4,7 +4,6 @@ pub mod complement;
 pub mod complement_single;
 pub mod merge;
 pub mod nearest;
-pub mod nearest_unique_k;
 pub mod numpy_bindings;
 pub mod overlaps;
 pub mod overlaps_two_pointer;

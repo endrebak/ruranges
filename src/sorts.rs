@@ -280,7 +280,6 @@ pub fn build_sorted_events_single_collection_separate_outputs(
     chrs: &[i64],
     starts: &[i64],
     ends: &[i64],
-    idxs: &[i64],
     slack: i64,
 ) -> (Vec<MinEvent>, Vec<MinEvent>) {
     let mut out_starts: Vec<MinEvent> = Vec::with_capacity(chrs.len());
@@ -291,7 +290,7 @@ pub fn build_sorted_events_single_collection_separate_outputs(
         out_starts.push(MinEvent {
             chr: chrs[i],
             pos: starts[i] - slack,
-            idx: idxs[i],
+            idx: i,
         });
     }
     for i in 0..chrs.len() {
@@ -299,7 +298,7 @@ pub fn build_sorted_events_single_collection_separate_outputs(
             out_ends.push(MinEvent {
                 chr: chrs[i],
                 pos: ends[i] + slack,
-                idx: idxs[i],
+                idx: i,
             });
         }
     }
