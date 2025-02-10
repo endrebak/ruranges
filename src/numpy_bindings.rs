@@ -14,6 +14,7 @@ use crate::cluster::sweep_line_cluster;
 use crate::complement::sweep_line_non_overlaps;
 use crate::complement_single::sweep_line_complement;
 use crate::merge::sweep_line_merge;
+use crate::nearest::nearest;
 // use crate::nearest::nearest;
 use crate::overlaps;
 use crate::overlaps::sweep_line_overlaps;
@@ -31,7 +32,7 @@ pub fn chromsweep_numpy(
     starts2: PyReadonlyArray1<i64>,
     ends2: PyReadonlyArray1<i64>,
     slack: i64,
-) -> PyResult<(Py<PyArray1<usize>>)> {
+) -> PyResult<Py<PyArray1<usize>>> {
     let chrs_slice = chrs.as_slice()?;
     let starts_slice = starts.as_slice()?;
     let ends_slice = ends.as_slice()?;
@@ -57,7 +58,7 @@ pub fn chromsweep_numpy(
     // let result =
     //     overlaps::sweep_line_overlaps(&sorted_starts, &sorted_ends, &sorted_starts2, &sorted_ends2);
 
-    let result = overlaps::sweep_line_overlaps(
+    let result = overlaps::sweep_line_overlaps_set1(
         chrs_slice,
         starts_slice,
         ends_slice,
@@ -75,45 +76,47 @@ pub fn chromsweep_numpy(
     res
 }
 
-// #[pyfunction]
-// #[pyo3(signature = (*, chrs, starts, ends, chrs2, starts2, ends2, slack=0, k=1, include_overlaps=true))]
-// pub fn nearest_numpy(
-//     py: Python,
-//     chrs: PyReadonlyArray1<i64>,
-//     starts: PyReadonlyArray1<i64>,
-//     ends: PyReadonlyArray1<i64>,
-//     chrs2: PyReadonlyArray1<i64>,
-//     starts2: PyReadonlyArray1<i64>,
-//     ends2: PyReadonlyArray1<i64>,
-//     slack: i64,
-//     k: usize,
-//     include_overlaps: bool,
-// ) -> PyResult<(Py<PyArray1<usize>>, Py<PyArray1<usize>>, Py<PyArray1<i64>>)> {
-//     let chrs_slice = chrs.as_slice()?;
-//     let starts_slice = starts.as_slice()?;
-//     let ends_slice = ends.as_slice()?;
-//     let chrs_slice2 = chrs2.as_slice()?;
-//     let starts_slice2 = starts2.as_slice()?;
-//     let ends_slice2 = ends2.as_slice()?;
-// 
-//     let result = nearest(
-//         chrs_slice,
-//         starts_slice,
-//         ends_slice,
-//         chrs_slice2,
-//         starts_slice2,
-//         ends_slice2,
-//         slack,
-//         k,
-//         include_overlaps,
-//     );
-//     let res = Ok((
-//         result.0.into_pyarray(py).to_owned().into(),
-//         result.1.into_pyarray(py).to_owned().into(),
-//         result.2.into_pyarray(py).to_owned().into(),
-//     ));
-//     res
-// }
+#[pyfunction]
+#[pyo3(signature = (*, chrs, starts, ends, chrs2, starts2, ends2, slack=0, k=1, include_overlaps=true, direction="any"))]
+pub fn nearest_numpy(
+    py: Python,
+    chrs: PyReadonlyArray1<i64>,
+    starts: PyReadonlyArray1<i64>,
+    ends: PyReadonlyArray1<i64>,
+    chrs2: PyReadonlyArray1<i64>,
+    starts2: PyReadonlyArray1<i64>,
+    ends2: PyReadonlyArray1<i64>,
+    slack: i64,
+    k: usize,
+    include_overlaps: bool,
+    direction: &str,
+) -> PyResult<(Py<PyArray1<usize>>, Py<PyArray1<usize>>, Py<PyArray1<i64>>)> {
+    let chrs_slice = chrs.as_slice()?;
+    let starts_slice = starts.as_slice()?;
+    let ends_slice = ends.as_slice()?;
+    let chrs_slice2 = chrs2.as_slice()?;
+    let starts_slice2 = starts2.as_slice()?;
+    let ends_slice2 = ends2.as_slice()?;
+
+    let result = nearest(
+        chrs_slice,
+        starts_slice,
+        ends_slice,
+        chrs_slice2,
+        starts_slice2,
+        ends_slice2,
+        slack,
+        k,
+        include_overlaps,
+        direction,
+    );
+    let res = Ok((
+        result.0.into_pyarray(py).to_owned().into(),
+        result.1.into_pyarray(py).to_owned().into(),
+        result.2.into_pyarray(py).to_owned().into(),
+    ));
+    res
+}
 
 #[pyfunction]
 pub fn subtract_numpy(
@@ -532,8 +535,8 @@ impl FromStr for Direction {
 #[pymodule]
 fn ruranges(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(chromsweep_numpy, m)?)?;
-    // m.add_function(wrap_pyfunction!(nearest_numpy, m)?)?;
     m.add_function(wrap_pyfunction!(complement_overlaps_numpy, m)?)?;
+    m.add_function(wrap_pyfunction!(nearest_numpy, m)?)?;
     m.add_function(wrap_pyfunction!(sort_intervals_numpy, m)?)?;
     // m.add_function(wrap_pyfunction!(nearest_intervals_unique_k_numpy, m)?)?;
     m.add_function(wrap_pyfunction!(cluster_numpy, m)?)?;

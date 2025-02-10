@@ -1,7 +1,7 @@
-use std::time::Instant;
+use std::{str::FromStr, time::Instant};
 
 use crate::{
-    overlaps::{sweep_line_overlaps, sweep_line_overlaps_nearest},
+    overlaps::{self, sweep_line_overlaps, sweep_line_overlaps_nearest},
     ruranges_structs::{MinEvent, Nearest, OverlapPair},
     sorts::build_sorted_events_single_collection_separate_outputs,
 };
@@ -183,57 +183,76 @@ pub fn nearest_intervals_to_the_left(
 }
 
 /// Merges th
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Direction {
+    Forward,
+    Backward,
+    Any,
+}
 
-// pub fn nearest(
-//     chrs: &[i64],
-//     starts: &[i64],
-//     ends: &[i64],
-//     chrs2: &[i64],
-//     starts2: &[i64],
-//     ends2: &[i64],
-//     slack: i64,
-//     k: usize,
-//     include_overlaps: bool,
-// ) -> (Vec<usize>, Vec<usize>, Vec<i64>) {
-//     let start = Instant::now();
-//     let overlaps = if include_overlaps {
-//         sweep_line_overlaps_nearest(
-//             chrs,
-//             starts,
-//             ends,
-//             chrs2,
-//             starts2,
-//             ends2,
-//             slack,
-//         )
-//     } else {
-//         Vec::new()
-//     };
-//     println!("{}", overlaps.len());
-//     println!("{:?}", overlaps);
-//     println!("{}", chrs.len());
-//     let (sorted_starts, sorted_ends) =
-//         build_sorted_events_single_collection_separate_outputs(chrs, starts, ends, slack);
-//     let (sorted_starts2, sorted_ends2) =
-//         build_sorted_events_single_collection_separate_outputs(chrs2, starts2, ends2, 0);
-//     println!("sorts {:.2?}", start.elapsed());
-// 
-//     println!("sorted_starts {:?}", sorted_starts);
-//     println!("sorted_ends {:?}", sorted_ends);
-//     println!("sorted_starts2 {:?}", sorted_starts2);
-//     println!("sorted_ends2 {:?}", sorted_ends2);
-//     let mut nearest_left = nearest_intervals_to_the_left(sorted_starts, sorted_ends2, k);
-//     nearest_left.sort_by_key(|n| (n.idx, n.distance));
-//     println!("left {:?}", nearest_left);
-//     let mut nearest_right = nearest_intervals_to_the_right(sorted_ends, sorted_starts2, k);
-//     nearest_right.sort_by_key(|n| (n.idx, n.distance));
-//     println!("right {:?}", nearest_right);
-// 
-//     let merged = merge_three_way_by_index_distance(&overlaps, &nearest_left, &nearest_right, k);
-//     println!("merged {:?}", merged);
-//     println!("merge {:.2?}", start.elapsed());
-//     merged
-// }
+impl FromStr for Direction {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "forward" => Ok(Direction::Forward),
+            "backward" => Ok(Direction::Backward),
+            "any" => Ok(Direction::Any),
+            _ => Err("Invalid direction string"),
+        }
+    }
+}
+
+pub fn nearest(
+    chrs: &[i64],
+    starts: &[i64],
+    ends: &[i64],
+    chrs2: &[i64],
+    starts2: &[i64],
+    ends2: &[i64],
+    slack: i64,
+    k: usize,
+    include_overlaps: bool,
+    direction: &str,
+) -> (Vec<usize>, Vec<usize>, Vec<i64>) {
+    let start = Instant::now();
+
+    let dir = Direction::from_str(direction);
+
+    let sorted_starts = build_sorted_events_single_collection_separate_outputs(chrs, starts, slack);
+    let sorted_ends = build_sorted_events_single_collection_separate_outputs(chrs, ends, slack);
+
+    let sorted_starts2 = build_sorted_events_single_collection_separate_outputs(chrs2, starts2, 0);
+    let sorted_ends2 = build_sorted_events_single_collection_separate_outputs(chrs2, ends2, 0);
+
+    let overlaps = if include_overlaps {
+        sweep_line_overlaps_nearest(
+            &sorted_starts, &sorted_ends, &sorted_starts2, &sorted_ends2
+        )
+    } else {
+        Vec::new()
+    };
+    println!("{}", overlaps.len());
+    println!("{:?}", overlaps);
+    println!("{}", chrs.len());
+    println!("sorts {:.2?}", start.elapsed());
+
+    println!("sorted_starts {:?}", sorted_starts);
+    println!("sorted_ends {:?}", sorted_ends);
+    println!("sorted_starts2 {:?}", sorted_starts2);
+    println!("sorted_ends2 {:?}", sorted_ends2);
+    let mut nearest_left = nearest_intervals_to_the_left(sorted_starts, sorted_ends2, k);
+    radsort::sort_by_key(&mut nearest_left, |n| (n.idx, n.distance));
+    println!("left {:?}", nearest_left);
+    let mut nearest_right = nearest_intervals_to_the_right(sorted_ends, sorted_starts2, k);
+    radsort::sort_by_key(&mut nearest_right, |n| (n.idx, n.distance));
+    println!("right {:?}", nearest_right);
+
+    let merged = merge_three_way_by_index_distance(&overlaps, &nearest_left, &nearest_right, k);
+    println!("merged {:?}", merged);
+    println!("merge {:.2?}", start.elapsed());
+    merged
+}
 
 
 /// Merges three sources of intervals, grouped by `idx` (i.e. `idx1` in overlaps).

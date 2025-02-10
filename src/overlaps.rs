@@ -71,7 +71,10 @@ pub fn sweep_line_overlaps(
             // Interval is starting
             if e.first_set {
                 // Overlaps with all currently active intervals in set2
-                overlaps.resize(overlaps.len() + active2, e.idx);
+                for &idx2 in active2.iter() {
+                    overlaps.push(e.idx);
+                    overlaps2.push(idx2);
+                };
                 // Now add it to active1
                 active1.insert(e.idx);
             } else {
@@ -96,7 +99,7 @@ pub fn sweep_line_overlaps(
     (overlaps, overlaps2)
 }
 
-pub fn sweep_line_overlaps_left_only(
+pub fn sweep_line_overlaps_set1(
     chrs: &[i64],
     starts: &[i64],
     ends: &[i64],
@@ -107,6 +110,7 @@ pub fn sweep_line_overlaps_left_only(
 ) -> Vec<usize> {
     // We'll collect all cross overlaps here
     let mut overlaps = Vec::new();
+    let mut overlaps2 = Vec::new();
 
     if chrs.is_empty() | chrs2.is_empty() {
         return overlaps;
@@ -118,7 +122,7 @@ pub fn sweep_line_overlaps_left_only(
 
     // Active sets
     let mut active1 = FxHashSet::default();
-    let mut active2 = 0;
+    let mut active2 = FxHashSet::default();
 
     let mut current_chr: i64 = events.first().unwrap().chr;
 
@@ -133,23 +137,27 @@ pub fn sweep_line_overlaps_left_only(
             // Interval is starting
             if e.first_set {
                 // Overlaps with all currently active intervals in set2
-                overlaps.resize(overlaps.len() + active2, e.idx);
+                for &idx2 in active2.iter() {
+                    overlaps.push(e.idx);
+                    overlaps2.push(idx2);
+                };
                 // Now add it to active1
                 active1.insert(e.idx);
             } else {
                 // Overlaps with all currently active intervals in set1
                 for &idx1 in active1.iter() {
                     overlaps.push(idx1);
+                    overlaps2.push(e.idx);
                 }
                 // Now add it to active2
-                active2 += 1;
+                active2.insert(e.idx);
             }
         } else {
             // Interval is ending
             if e.first_set {
                 active1.remove(&e.idx);
             } else {
-                active2 -= 1;
+                active2.remove(&e.idx);
             }
         }
     }

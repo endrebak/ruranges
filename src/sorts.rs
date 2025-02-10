@@ -278,43 +278,24 @@ pub fn build_sorted_events_single_collection(
 
 pub fn build_sorted_events_single_collection_separate_outputs(
     chrs: &[i64],
-    starts: &[i64],
-    ends: &[i64],
+    pos: &[i64],
     slack: i64,
-) -> (Vec<MinEvent>, Vec<MinEvent>) {
-    let mut out_starts: Vec<MinEvent> = Vec::with_capacity(chrs.len());
-    let mut out_ends: Vec<MinEvent> = Vec::with_capacity(chrs.len());
+) -> Vec<MinEvent> {
+    let mut out_pos: Vec<MinEvent> = Vec::with_capacity(chrs.len());
 
     // Convert set1 intervals into events
     for i in 0..chrs.len() {
-        out_starts.push(MinEvent {
+        out_pos.push(MinEvent {
             chr: chrs[i],
-            pos: starts[i] - slack,
+            pos: pos[i] - slack,
             idx: i,
         });
     }
-    for i in 0..chrs.len() {
-        {
-            out_ends.push(MinEvent {
-                chr: chrs[i],
-                pos: ends[i] + slack,
-                idx: i,
-            });
-        }
-    }
 
-    // Sort events by:
-    // 1. pos (ascending)
-    // 2. is_start before is_end (if pos ties)
-    // (We don't strictly need to tie-break by set_id or idx, but we can.)
+    sort_by_key(&mut out_pos, |e| e.pos);
+    sort_by_key(&mut out_pos, |e| e.chr);
 
-    sort_by_key(&mut out_starts, |e| e.pos);
-    sort_by_key(&mut out_starts, |e| e.chr);
-
-    sort_by_key(&mut out_ends, |e| e.pos);
-    sort_by_key(&mut out_ends, |e| e.chr);
-
-    (out_starts, out_ends)
+    out_pos
 }
 
 pub fn build_sorted_events(
