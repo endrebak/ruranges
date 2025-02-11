@@ -1,7 +1,7 @@
 use std::{str::FromStr, time::Instant};
 
 use crate::{
-    overlaps::{self, sweep_line_overlaps, sweep_line_overlaps_nearest},
+    overlaps::{self, sweep_line_overlaps, sweep_line_overlaps_overlap_pair},
     ruranges_structs::{MinEvent, Nearest, OverlapPair},
     sorts::build_sorted_events_single_collection_separate_outputs,
 };
@@ -224,7 +224,7 @@ pub fn nearest(
     let sorted_ends2 = build_sorted_events_single_collection_separate_outputs(chrs2, ends2, 0);
 
     let overlaps = if include_overlaps {
-        sweep_line_overlaps_nearest(
+        sweep_line_overlaps_overlap_pair(
             &sorted_starts, &sorted_ends, &sorted_starts2, &sorted_ends2
         )
     } else {

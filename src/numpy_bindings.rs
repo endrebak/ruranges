@@ -6,7 +6,6 @@ use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use pyo3::types::PyTuple;
 use pyo3::wrap_pyfunction;
-use rayon::scope;
 use rustc_hash::FxHashMap;
 
 use crate::boundary::sweep_line_boundary;
@@ -17,10 +16,33 @@ use crate::merge::sweep_line_merge;
 use crate::nearest::nearest;
 // use crate::nearest::nearest;
 use crate::overlaps;
+use crate::overlaps::sweep_line_first_overlaps;
 use crate::overlaps::sweep_line_overlaps;
 use crate::sorts;
 use crate::spliced_subsequence::spliced_subseq;
 use crate::subtract::sweep_line_subtract;
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum OverlapType {
+    First,
+    Last,
+    Contained,
+    All,
+}
+
+impl FromStr for OverlapType {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "all" => Ok(OverlapType::All),
+            "first" => Ok(OverlapType::First),
+            "last" => Ok(OverlapType::Last),
+            "contained" => Ok(OverlapType::Contained),
+            _ => Err("Invalid direction string"),
+        }
+    }
+}
 
 #[pyfunction]
 pub fn chromsweep_numpy(
@@ -32,13 +54,16 @@ pub fn chromsweep_numpy(
     starts2: PyReadonlyArray1<i64>,
     ends2: PyReadonlyArray1<i64>,
     slack: i64,
-) -> PyResult<Py<PyArray1<usize>>> {
+    overlap_type: &str,
+) -> PyResult<(Py<PyArray1<usize>>, Py<PyArray1<usize>>)> {
     let chrs_slice = chrs.as_slice()?;
     let starts_slice = starts.as_slice()?;
     let ends_slice = ends.as_slice()?;
     let chrs_slice2 = chrs2.as_slice()?;
     let starts_slice2 = starts2.as_slice()?;
     let ends_slice2 = ends2.as_slice()?;
+
+    let overlap_type = OverlapType::from_str(overlap_type).unwrap();
 
     // let (sorted_starts, sorted_ends) = build_sorted_events_single_collection_separate_outputs(
     //     chrs_slice,
@@ -58,21 +83,42 @@ pub fn chromsweep_numpy(
     // let result =
     //     overlaps::sweep_line_overlaps(&sorted_starts, &sorted_ends, &sorted_starts2, &sorted_ends2);
 
-    let result = overlaps::sweep_line_overlaps_set1(
-        chrs_slice,
-        starts_slice,
-        ends_slice,
-        chrs_slice2,
-        starts_slice2,
-        ends_slice2,
-        slack,
-    );
+    let result = if overlap_type == OverlapType::All {
+        overlaps::sweep_line_overlaps(
+            chrs_slice,
+            starts_slice,
+            ends_slice,
+            chrs_slice2,
+            starts_slice2,
+            ends_slice2,
+            slack,
+        );
+    } else if overlap_type == OverlapType::First {
+        sweep_line_first_overlaps(
+            chrs_slice,
+            starts_slice,
+            ends_slice,
+            chrs_slice2,
+            starts_slice2,
+            ends_slice2,
+            slack,
+        );
+    } else if overlap_type == OverlapType::Last {
+        sweep_line_first_overlaps(
+            &chrs_slice.iter().map(|&x| -x).collect::<Vec<_>>(),
+            &starts_slice.iter().map(|&x| -x).collect::<Vec<_>>(),
+            &ends_slice.iter().map(|&x| -x).collect::<Vec<_>>(),
+            &chrs_slice2.iter().map(|&x| -x).collect::<Vec<_>>(),
+            &starts_slice2.iter().map(|&x| -x).collect::<Vec<_>>(),
+            &ends_slice2.iter().map(|&x| -x).collect::<Vec<_>>(),
+            -slack,
+        );
+    };
 
-    println!("sweep line overlaps in chromsweep {}", result.len());
-
-    let res = Ok(
-        result.into_pyarray(py).to_owned().into(),
-    );
+    let res = Ok((
+        result.0.into_pyarray(py).to_owned().into(),
+        result.1.into_pyarray(py).to_owned().into(),
+    ));
     res
 }
 

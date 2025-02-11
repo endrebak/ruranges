@@ -13,8 +13,7 @@ pyo3 = "0.23.3"
 radsort = "0.1.1"
 rustc-hash = "2.1.0"
 numpy = "0.23"
-natord = "1.0"
-rayon = "1.8"
+indexmap = "1.9"
 
 [profile.release]
 lto = true
