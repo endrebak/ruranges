@@ -215,9 +215,7 @@ pub fn nearest(
     include_overlaps: bool,
     direction: &str,
 ) -> (Vec<usize>, Vec<usize>, Vec<i64>) {
-    let start = Instant::now();
-
-    let dir = Direction::from_str(direction);
+    let dir = Direction::from_str(direction).unwrap();
 
     let sorted_starts = build_sorted_events_single_collection_separate_outputs(chrs, starts, slack);
     let sorted_ends = build_sorted_events_single_collection_separate_outputs(chrs, ends, slack);
@@ -232,25 +230,22 @@ pub fn nearest(
     } else {
         Vec::new()
     };
-    println!("{}", overlaps.len());
-    println!("{:?}", overlaps);
-    println!("{}", chrs.len());
-    println!("sorts {:.2?}", start.elapsed());
-
-    println!("sorted_starts {:?}", sorted_starts);
-    println!("sorted_ends {:?}", sorted_ends);
-    println!("sorted_starts2 {:?}", sorted_starts2);
-    println!("sorted_ends2 {:?}", sorted_ends2);
-    let mut nearest_left = nearest_intervals_to_the_left(sorted_starts, sorted_ends2, k);
-    radsort::sort_by_key(&mut nearest_left, |n| (n.idx, n.distance));
-    println!("left {:?}", nearest_left);
-    let mut nearest_right = nearest_intervals_to_the_right(sorted_ends, sorted_starts2, k);
-    radsort::sort_by_key(&mut nearest_right, |n| (n.idx, n.distance));
-    println!("right {:?}", nearest_right);
+    let nearest_left = if dir == Direction::Backward || dir == Direction::Any {
+        let mut tmp = nearest_intervals_to_the_left(sorted_starts, sorted_ends2, k);
+        radsort::sort_by_key(&mut tmp, |n| (n.idx, n.distance));
+        tmp
+    } else {
+        Vec::new()
+    };
+    let nearest_right = if dir == Direction::Forward || dir == Direction::Any {
+        let mut tmp = nearest_intervals_to_the_right(sorted_ends, sorted_starts2, k);
+        radsort::sort_by_key(&mut tmp, |n| (n.idx, n.distance));
+        tmp
+    } else {
+        Vec::new()
+    };
 
     let merged = merge_three_way_by_index_distance(&overlaps, &nearest_left, &nearest_right, k);
-    println!("merged {:?}", merged);
-    println!("merge {:.2?}", start.elapsed());
     merged
 }
 
