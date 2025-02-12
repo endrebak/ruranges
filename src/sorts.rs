@@ -5,6 +5,7 @@ use radsort::sort_by_key;
 use crate::ruranges_structs::Event;
 use crate::ruranges_structs::EventUsize;
 use crate::ruranges_structs::Interval;
+use crate::ruranges_structs::MaxEvent;
 use crate::ruranges_structs::MinEvent;
 use crate::ruranges_structs::SplicedSubsequenceInterval;
 use crate::ruranges_structs::SubsequenceInterval;
@@ -298,6 +299,28 @@ pub fn build_sorted_events_single_collection_separate_outputs(
     out_pos
 }
 
+pub fn build_sorted_events_with_starts_ends(
+    chrs: &[i64],
+    pos: &[i64],
+    slack: i64,
+) -> Vec<MinEvent> {
+    let mut out_pos: Vec<MinEvent> = Vec::with_capacity(chrs.len());
+
+    // Convert set1 intervals into events
+    for i in 0..chrs.len() {
+        out_pos.push(MinEvent {
+            chr: chrs[i],
+            pos: pos[i] - slack,
+            idx: i,
+        });
+    }
+
+    sort_by_key(&mut out_pos, |e| e.pos);
+    sort_by_key(&mut out_pos, |e| e.chr);
+
+    out_pos
+}
+
 pub fn build_sorted_events(
     chrs: &[i64],
     starts: &[i64],
@@ -313,14 +336,18 @@ pub fn build_sorted_events(
     for i in 0..chrs.len() {
         events.push(EventUsize {
             chr: chrs[i],
-            pos: starts[i] - slack,
+            pos: if slack < starts[i] {
+                starts[i] - slack
+            } else {
+                0
+            },
             is_start: true,
             first_set: true,
             idx: i,
         });
         events.push(EventUsize {
             chr: chrs[i],
-            pos: ends[i] + slack,
+            pos: ends[i].saturating_add(slack),
             is_start: false,
             first_set: true,
             idx: i,
@@ -341,6 +368,67 @@ pub fn build_sorted_events(
             is_start: false,
             first_set: false,
             idx: j,
+        });
+    }
+
+    sort_by_key(&mut events, |e| e.is_start);
+    sort_by_key(&mut events, |e| e.pos);
+    sort_by_key(&mut events, |e| e.chr);
+
+    events
+}
+
+pub fn build_sorted_maxevents_with_starts_ends(
+    chrs: &[i64],
+    starts: &[i64],
+    ends: &[i64],
+    chrs2: &[i64],
+    starts2: &[i64],
+    ends2: &[i64],
+    slack: i64,
+) -> Vec<MaxEvent> {
+    let mut events: Vec<MaxEvent> = Vec::with_capacity(2 * (chrs.len() + chrs2.len()));
+
+    // Convert set1 intervals into events
+    for i in 0..chrs.len() {
+        events.push(MaxEvent {
+            chr: chrs[i],
+            pos: starts[i] - slack,
+            start: starts[i] - slack,
+            end: ends[i] + slack,
+            is_start: true,
+            first_set: true,
+            idx: i,
+        });
+        events.push(MaxEvent {
+            chr: chrs[i],
+            pos: ends[i] + slack,
+            end: ends[i] + slack,
+            start: starts[i] - slack,
+            is_start: false,
+            first_set: true,
+            idx: i,
+        });
+    }
+
+    for i in 0..chrs2.len() {
+        events.push(MaxEvent {
+            chr: chrs2[i],
+            pos: starts2[i],
+            start: starts2[i],
+            end: ends2[i],
+            is_start: true,
+            first_set: false,
+            idx: i,
+        });
+        events.push(MaxEvent {
+            chr: chrs2[i],
+            pos: ends2[i],
+            start: starts2[i],
+            end: ends2[i],
+            is_start: false,
+            first_set: false,
+            idx: i,
         });
     }
 

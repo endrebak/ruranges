@@ -1,5 +1,5 @@
-use rustc_hash::FxHashSet;
 use indexmap::IndexSet;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::ruranges_structs::{MinEvent, OverlapPair};
 use crate::sorts;
@@ -50,9 +50,7 @@ pub fn sweep_line_overlaps(
         return (overlaps, overlaps2);
     };
 
-    let events = sorts::build_sorted_events(
-        chrs, starts, ends, chrs2, starts2, ends2, slack,
-    );
+    let events = sorts::build_sorted_events(chrs, starts, ends, chrs2, starts2, ends2, slack);
 
     // Active sets
     let mut active1 = FxHashSet::default();
@@ -75,7 +73,7 @@ pub fn sweep_line_overlaps(
                 for &idx2 in active2.iter() {
                     overlaps.push(e.idx);
                     overlaps2.push(idx2);
-                };
+                }
                 // Now add it to active1
                 active1.insert(e.idx);
             } else {
@@ -117,9 +115,7 @@ pub fn sweep_line_overlaps_set1(
         return overlaps;
     };
 
-    let events = sorts::build_sorted_events(
-        chrs, starts, ends, chrs2, starts2, ends2, slack,
-    );
+    let events = sorts::build_sorted_events(chrs, starts, ends, chrs2, starts2, ends2, slack);
 
     // Active sets
     let mut active1 = FxHashSet::default();
@@ -141,7 +137,7 @@ pub fn sweep_line_overlaps_set1(
                 for &idx2 in active2.iter() {
                     overlaps.push(e.idx);
                     overlaps2.push(idx2);
-                };
+                }
                 // Now add it to active1
                 active1.insert(e.idx);
             } else {
@@ -185,8 +181,8 @@ pub fn sweep_line_overlaps_overlap_pair(
     let mut i2 = 0usize; // pointer into sorted_starts2 (set 2)
     let mut i3 = 0usize; // pointer into sorted_ends    (set 1)
     let mut i4 = 0usize; // pointer into sorted_ends2   (set 2)
-    // Figure out the very first chromosome we encounter (if any):
-    // We'll look at the heads of each list and pick the lexicographically smallest.
+                         // Figure out the very first chromosome we encounter (if any):
+                         // We'll look at the heads of each list and pick the lexicographically smallest.
     let first_candidate = pick_winner_of_four(
         sorted_starts.get(i1).map(|e| (WhichList::StartSet1, e)),
         sorted_starts2.get(i2).map(|e| (WhichList::StartSet2, e)),
@@ -254,81 +250,6 @@ pub fn sweep_line_overlaps_overlap_pair(
     out_idxs
 }
 
-
-pub fn sweep_line_first_overlaps(
-    chrs: &[i64],
-    starts: &[i64],
-    ends: &[i64],
-    chrs2: &[i64],
-    starts2: &[i64],
-    ends2: &[i64],
-    slack: i64,
-) -> (Vec<usize>, Vec<usize>) {
-    let mut overlaps = Vec::new();
-    let mut overlaps2 = Vec::new();
-
-    if chrs.is_empty() || chrs2.is_empty() {
-        return (overlaps, overlaps2);
-    }
-
-    // Build a sorted list of events. 
-    // Each event has { chr, pos, idx, first_set, is_start }.
-    // (Not shown here, but presumably something like:)
-    let events = sorts::build_sorted_events(chrs, starts, ends, chrs2, starts2, ends2, slack);
-
-    // Use IndexSet instead of Vec.
-    let mut active1 = IndexSet::new();
-    let mut active2 = IndexSet::new();
-
-    let mut current_chr = events.first().unwrap().chr;
-
-    for e in events {
-        // Whenever chromosome changes, clear the active sets
-        if e.chr != current_chr {
-            active1.clear();
-            active2.clear();
-            current_chr = e.chr;
-        }
-
-        if e.is_start {
-            // Interval is starting
-            if e.first_set {
-                // This is an interval from set1; try overlapping with the first active from set2
-                if let Some(&idx2) = active2.get_index(0) {
-                    // Record only this single overlap
-                    overlaps.push(e.idx);
-                    overlaps2.push(idx2);
-                    // Do NOT add `e.idx` to active1, since we only want the first overlap
-                } else {
-                    // No active intervals in set2, so keep this one active for future
-                    active1.insert(e.idx);
-                }
-            } else {
-                // This is an interval from set2; try overlapping with the first active from set1
-                if let Some(&idx1) = active1.get_index(0) {
-                    overlaps.push(idx1);
-                    overlaps2.push(e.idx);
-                    // Do NOT add `e.idx` to active2
-                } else {
-                    active2.insert(e.idx);
-                }
-            }
-        } else {
-            // Interval is ending
-            if e.first_set {
-                // Remove from active1
-                active1.remove(&e.idx);
-            } else {
-                // Remove from active2
-                active2.remove(&e.idx);
-            }
-        }
-    }
-
-    (overlaps, overlaps2)
-}
-
-
 pub fn sweep_line_overlaps_containment(
     chrs: &[i64],
     starts: &[i64],
@@ -336,7 +257,6 @@ pub fn sweep_line_overlaps_containment(
     chrs2: &[i64],
     starts2: &[i64],
     ends2: &[i64],
-    slack: i64,
 ) -> (Vec<usize>, Vec<usize>) {
     // We'll collect all cross overlaps here
     let mut overlaps = Vec::new();
@@ -346,13 +266,13 @@ pub fn sweep_line_overlaps_containment(
         return (overlaps, overlaps2);
     };
 
-    let events = sorts::build_sorted_events(
-        chrs, starts, ends, chrs2, starts2, ends2, slack,
+    let events = sorts::build_sorted_maxevents_with_starts_ends(
+        chrs, starts, ends, chrs2, starts2, ends2, 0,
     );
 
     // Active sets
-    let mut active1 = FxHashSet::default();
-    let mut active2 = FxHashSet::default();
+    let mut active1 = FxHashMap::default();
+    let mut active2 = FxHashMap::default();
 
     let mut current_chr: i64 = events.first().unwrap().chr;
 
@@ -368,20 +288,24 @@ pub fn sweep_line_overlaps_containment(
             // Interval is starting
             if e.first_set {
                 // Overlaps with all currently active intervals in set2
-                for &idx2 in active2.iter() {
-                    overlaps.push(e.idx);
-                    overlaps2.push(idx2);
-                };
+                for (&idx2, &(start2, end2)) in active2.iter() {
+                    if e.start >= start2 && e.end <= end2 {
+                        overlaps.push(e.idx);
+                        overlaps2.push(idx2);
+                    };
+                }
                 // Now add it to active1
-                active1.insert(e.idx);
+                active1.insert(e.idx, (e.start, e.end));
             } else {
                 // Overlaps with all currently active intervals in set1
-                for &idx1 in active1.iter() {
-                    overlaps.push(idx1);
-                    overlaps2.push(e.idx);
+                for (&idx, &(start, end)) in active1.iter() {
+                    if e.start <= start && e.end >= end {
+                        overlaps.push(idx);
+                        overlaps2.push(e.idx);
+                    };
                 }
                 // Now add it to active2
-                active2.insert(e.idx);
+                active2.insert(e.idx, (e.start, e.end));
             }
         } else {
             // Interval is ending

@@ -225,7 +225,10 @@ pub fn nearest(
 
     let overlaps = if include_overlaps {
         sweep_line_overlaps_overlap_pair(
-            &sorted_starts, &sorted_ends, &sorted_starts2, &sorted_ends2
+            &sorted_starts,
+            &sorted_ends,
+            &sorted_starts2,
+            &sorted_ends2,
         )
     } else {
         Vec::new()
@@ -249,7 +252,6 @@ pub fn nearest(
     merged
 }
 
-
 /// Merges three sources of intervals, grouped by `idx` (i.e. `idx1` in overlaps).
 /// For each unique `idx`, it returns up to `k` *distinct* distances (including
 /// all intervals at those distances). Overlaps are treated as distance=0 (or 1).
@@ -257,8 +259,8 @@ pub fn nearest(
 /// The data is assumed to be sorted in ascending order by `(idx, distance)`.
 pub fn merge_three_way_by_index_distance(
     overlaps: &[OverlapPair],  // sorted by idx1
-    nearest_left: &[Nearest],   // sorted by (idx, distance)
-    nearest_right: &[Nearest],  // sorted by (idx, distance)
+    nearest_left: &[Nearest],  // sorted by (idx, distance)
+    nearest_right: &[Nearest], // sorted by (idx, distance)
     k: usize,
 ) -> (Vec<usize>, Vec<usize>, Vec<i64>) {
     // We'll return tuples: (idx, idx2, distance).
@@ -281,12 +283,12 @@ pub fn merge_three_way_by_index_distance(
         let current_idx = match (idx_o, idx_l, idx_r) {
             (None, None, None) => break,
             (Some(a), Some(b), Some(c)) => a.min(b.min(c)),
-            (Some(a), Some(b), None)    => a.min(b),
-            (Some(a), None, Some(c))    => a.min(c),
-            (None, Some(b), Some(c))    => b.min(c),
-            (Some(a), None, None)       => a,
-            (None, Some(b), None)       => b,
-            (None, None, Some(c))       => c,
+            (Some(a), Some(b), None) => a.min(b),
+            (Some(a), None, Some(c)) => a.min(c),
+            (None, Some(b), Some(c)) => b.min(c),
+            (Some(a), None, None) => a,
+            (None, Some(b), None) => b,
+            (None, None, Some(c)) => c,
         };
 
         // Gather all overlaps for current_idx
@@ -330,12 +332,8 @@ pub fn merge_three_way_by_index_distance(
             // For the example, let's assume actual Overlap distance=0:
             0
         };
-        let mut left_dist = |ix: usize| -> i64 {
-            left_slice[ix].distance
-        };
-        let mut right_dist = |ix: usize| -> i64 {
-            right_slice[ix].distance
-        };
+        let mut left_dist = |ix: usize| -> i64 { left_slice[ix].distance };
+        let mut right_dist = |ix: usize| -> i64 { right_slice[ix].distance };
 
         // Inner loop: pick the next *smallest* distance among the three slices
         while oi < overlaps_slice.len() || lj < left_slice.len() || rr < right_slice.len() {

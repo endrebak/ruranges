@@ -1,12 +1,14 @@
 use std::str::FromStr;
 use std::time::Instant;
 
+use numpy::PyArrayMethods;
 use numpy::{IntoPyArray, PyArray1, PyReadonlyArray1};
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use pyo3::types::PyTuple;
 use pyo3::wrap_pyfunction;
 use rustc_hash::FxHashMap;
+use rustc_hash::FxHashSet;
 
 use crate::boundary::sweep_line_boundary;
 use crate::cluster::sweep_line_cluster;
@@ -16,9 +18,9 @@ use crate::merge::sweep_line_merge;
 use crate::nearest::nearest;
 // use crate::nearest::nearest;
 use crate::overlaps;
-use crate::overlaps::sweep_line_first_overlaps;
-use crate::overlaps::sweep_line_overlaps;
+use crate::ruranges_structs::OverlapPair;
 use crate::sorts;
+use crate::sorts::build_sorted_events_single_collection_separate_outputs;
 use crate::spliced_subsequence::spliced_subseq;
 use crate::subtract::sweep_line_subtract;
 
@@ -64,21 +66,7 @@ pub fn chromsweep_numpy(
     let ends_slice2 = ends2.as_slice()?;
 
     let overlap_type = OverlapType::from_str(overlap_type).unwrap();
-
-    // let (sorted_starts, sorted_ends) = build_sorted_events_single_collection_separate_outputs(
-    //     chrs_slice,
-    //     starts_slice,
-    //     ends_slice,
-    //     idxs_slice,
-    //     slack,
-    // );
-    // let (sorted_starts2, sorted_ends2) = build_sorted_events_single_collection_separate_outputs(
-    //     chrs_slice2,
-    //     starts_slice2,
-    //     ends_slice2,
-    //     idxs_slice2,
-    //     0,
-    // );
+    println!("overlap type {:?}", overlap_type);
 
     // let result =
     //     overlaps::sweep_line_overlaps(&sorted_starts, &sorted_ends, &sorted_starts2, &sorted_ends2);
@@ -92,27 +80,67 @@ pub fn chromsweep_numpy(
             starts_slice2,
             ends_slice2,
             slack,
-        );
-    } else if overlap_type == OverlapType::First {
-        sweep_line_first_overlaps(
-            chrs_slice,
-            starts_slice,
-            ends_slice,
-            chrs_slice2,
-            starts_slice2,
-            ends_slice2,
-            slack,
-        );
-    } else if overlap_type == OverlapType::Last {
-        sweep_line_first_overlaps(
-            &chrs_slice.iter().map(|&x| -x).collect::<Vec<_>>(),
-            &starts_slice.iter().map(|&x| -x).collect::<Vec<_>>(),
-            &ends_slice.iter().map(|&x| -x).collect::<Vec<_>>(),
-            &chrs_slice2.iter().map(|&x| -x).collect::<Vec<_>>(),
-            &starts_slice2.iter().map(|&x| -x).collect::<Vec<_>>(),
-            &ends_slice2.iter().map(|&x| -x).collect::<Vec<_>>(),
-            -slack,
-        );
+        )
+    } else {
+        if overlap_type == OverlapType::First || overlap_type == OverlapType::Contained {
+            let sorted_starts = build_sorted_events_single_collection_separate_outputs(
+                chrs_slice,
+                starts_slice,
+                slack,
+            );
+            println!("{:?}", sorted_starts);
+            let sorted_ends =
+                build_sorted_events_single_collection_separate_outputs(chrs_slice, ends_slice, 0);
+            let sorted_starts2 = build_sorted_events_single_collection_separate_outputs(
+                chrs_slice2,
+                starts_slice2,
+                slack,
+            );
+            let sorted_ends2 =
+                build_sorted_events_single_collection_separate_outputs(chrs_slice2, ends_slice2, 0);
+            let mut pairs = overlaps::sweep_line_overlaps_overlap_pair(
+                &sorted_starts,
+                &sorted_ends,
+                &sorted_starts2,
+                &sorted_ends2,
+            );
+            println!("{:?}", pairs);
+            keep_first_by_idx(&mut pairs);
+            println!("{:?}", pairs);
+            pairs.into_iter().map(|pair| (pair.idx, pair.idx2)).unzip()
+        } else {
+            let new_starts: Vec<_> = starts_slice.iter().map(|&v| -v).collect();
+            let new_ends: Vec<_> = ends_slice.iter().map(|&v| -v).collect();
+
+            let sorted_starts = build_sorted_events_single_collection_separate_outputs(
+                chrs_slice, &new_ends, slack,
+            );
+            let sorted_ends =
+                build_sorted_events_single_collection_separate_outputs(chrs_slice, &new_starts, 0);
+
+            let new_starts2: Vec<_> = starts_slice2.iter().map(|&v| -v).collect();
+            let new_ends2: Vec<_> = ends_slice2.iter().map(|&v| -v).collect();
+
+            let sorted_starts2 = build_sorted_events_single_collection_separate_outputs(
+                chrs_slice2,
+                &new_ends2,
+                slack,
+            );
+            let sorted_ends2 = build_sorted_events_single_collection_separate_outputs(
+                chrs_slice2,
+                &new_starts2,
+                0,
+            );
+
+            let mut pairs = overlaps::sweep_line_overlaps_overlap_pair(
+                &sorted_ends,
+                &sorted_starts,
+                &sorted_ends2,
+                &sorted_starts2,
+            );
+            keep_first_by_idx(&mut pairs);
+            pairs.into_iter().map(|pair| (pair.idx, pair.idx2)).unzip()
+        }
     };
 
     let res = Ok((
@@ -120,6 +148,11 @@ pub fn chromsweep_numpy(
         result.1.into_pyarray(py).to_owned().into(),
     ));
     res
+}
+
+fn keep_first_by_idx(pairs: &mut Vec<OverlapPair>) {
+    let mut seen_idx = FxHashSet::default();
+    pairs.retain(|pair| seen_idx.insert(pair.idx));
 }
 
 #[pyfunction]

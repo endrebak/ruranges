@@ -6,7 +6,6 @@ pub mod merge;
 pub mod nearest;
 pub mod numpy_bindings;
 pub mod overlaps;
-pub mod overlaps_two_pointer;
 pub mod ruranges_structs;
 pub mod sorts;
 pub mod spliced_subsequence;

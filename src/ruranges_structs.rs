@@ -29,6 +29,17 @@ pub struct Event {
 }
 
 #[derive(Debug, Clone, Hash)]
+pub struct MaxEvent {
+    pub chr: i64,
+    pub pos: i64,
+    pub start: i64,
+    pub end: i64,
+    pub is_start: bool,
+    pub first_set: bool,
+    pub idx: usize,
+}
+
+#[derive(Debug, Clone, Hash)]
 pub struct MinEvent {
     pub chr: i64,
     pub pos: i64,
