@@ -1,8 +1,11 @@
 use indexmap::IndexSet;
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::ruranges_structs::{MinEvent, OverlapPair};
-use crate::sorts;
+use crate::ruranges_structs::{MaxEvent, MinEvent, OverlapPair};
+use crate::sorts::{
+    self, build_sorted_events_single_collection_separate_outputs,
+    build_sorted_maxevents_with_starts_ends,
+};
 
 /// Perform a four-way merge sweep to find cross overlaps.
 
@@ -250,25 +253,13 @@ pub fn sweep_line_overlaps_overlap_pair(
     out_idxs
 }
 
-pub fn sweep_line_overlaps_containment(
-    chrs: &[i64],
-    starts: &[i64],
-    ends: &[i64],
-    chrs2: &[i64],
-    starts2: &[i64],
-    ends2: &[i64],
-) -> (Vec<usize>, Vec<usize>) {
+pub fn sweep_line_overlaps_containment(events: Vec<MaxEvent>) -> (Vec<OverlapPair>) {
     // We'll collect all cross overlaps here
     let mut overlaps = Vec::new();
-    let mut overlaps2 = Vec::new();
 
-    if chrs.is_empty() | chrs2.is_empty() {
-        return (overlaps, overlaps2);
+    if events.is_empty() {
+        return overlaps;
     };
-
-    let events = sorts::build_sorted_maxevents_with_starts_ends(
-        chrs, starts, ends, chrs2, starts2, ends2, 0,
-    );
 
     // Active sets
     let mut active1 = FxHashMap::default();
@@ -290,8 +281,10 @@ pub fn sweep_line_overlaps_containment(
                 // Overlaps with all currently active intervals in set2
                 for (&idx2, &(start2, end2)) in active2.iter() {
                     if e.start >= start2 && e.end <= end2 {
-                        overlaps.push(e.idx);
-                        overlaps2.push(idx2);
+                        overlaps.push(OverlapPair {
+                            idx: e.idx,
+                            idx2: idx2,
+                        });
                     };
                 }
                 // Now add it to active1
@@ -300,8 +293,10 @@ pub fn sweep_line_overlaps_containment(
                 // Overlaps with all currently active intervals in set1
                 for (&idx, &(start, end)) in active1.iter() {
                     if e.start <= start && e.end >= end {
-                        overlaps.push(idx);
-                        overlaps2.push(e.idx);
+                        overlaps.push(OverlapPair {
+                            idx: idx,
+                            idx2: e.idx,
+                        });
                     };
                 }
                 // Now add it to active2
@@ -317,7 +312,7 @@ pub fn sweep_line_overlaps_containment(
         }
     }
 
-    (overlaps, overlaps2)
+    overlaps
 }
 
 fn pick_winner_of_four<'a>(
@@ -363,5 +358,67 @@ fn pick_winner_of_two_choose_first_if_equal<'a>(
                 (false, true) => Some((wh_b, ev_b)),
             }
         }
+    }
+}
+
+pub fn compute_sorted_events(
+    chrs: &[i64],
+    starts: &[i64],
+    ends: &[i64],
+    slack: i64,
+    invert: bool,
+) -> (Vec<MinEvent>, Vec<MinEvent>) {
+    if !invert {
+        // "Normal" path
+        let sorted_starts =
+            build_sorted_events_single_collection_separate_outputs(chrs, starts, slack);
+        let sorted_ends = build_sorted_events_single_collection_separate_outputs(chrs, ends, 0);
+        (sorted_starts, sorted_ends)
+    } else {
+        // "Inverted" path
+        let new_starts: Vec<_> = starts.iter().map(|&v| -v).collect();
+        let new_ends: Vec<_> = ends.iter().map(|&v| -v).collect();
+
+        let sorted_starts =
+            build_sorted_events_single_collection_separate_outputs(chrs, &new_ends, slack);
+        let sorted_ends =
+            build_sorted_events_single_collection_separate_outputs(chrs, &new_starts, 0);
+        (sorted_starts, sorted_ends)
+    }
+}
+
+pub fn compute_sorted_maxevents(
+    chrs: &[i64],
+    starts: &[i64],
+    ends: &[i64],
+    chrs2: &[i64],
+    starts2: &[i64],
+    ends2: &[i64],
+    slack: i64,
+    invert: bool,
+) -> Vec<MaxEvent> {
+    if !invert {
+        // "Normal" path
+        build_sorted_maxevents_with_starts_ends(chrs, starts, ends, chrs2, starts2, ends2, slack)
+    } else {
+        // "Inverted" path
+        let new_starts_vec: Vec<i64> = starts.iter().map(|&v| -v).collect();
+        let new_starts: &[i64] = new_starts_vec.as_slice();
+        let new_ends_vec: Vec<i64> = ends.iter().map(|&v| -v).collect();
+        let new_ends: &[i64] = new_ends_vec.as_slice();
+
+        let new_starts_vec2: Vec<i64> = starts2.iter().map(|&v| -v).collect();
+        let new_starts2: &[i64] = new_starts_vec2.as_slice();
+        let new_ends_vec2: Vec<i64> = ends2.iter().map(|&v| -v).collect();
+        let new_ends2: &[i64] = new_ends_vec2.as_slice();
+        build_sorted_maxevents_with_starts_ends(
+            chrs,
+            new_ends,
+            new_starts,
+            chrs2,
+            new_ends2,
+            new_starts2,
+            slack,
+        )
     }
 }
