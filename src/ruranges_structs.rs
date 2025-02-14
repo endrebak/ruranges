@@ -70,7 +70,7 @@ pub struct SplicedSubsequenceInterval {
     /// The genomic end coordinate.
     pub end: i64,
 
-    pub idx: i64,
+    pub idx: usize,
 
     pub forward_strand: bool,
 

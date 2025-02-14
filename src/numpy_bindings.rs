@@ -211,15 +211,13 @@ pub fn sort_intervals_numpy(
     chrs: PyReadonlyArray1<i64>,
     starts: PyReadonlyArray1<i64>,
     ends: PyReadonlyArray1<i64>,
-    idxs: PyReadonlyArray1<i64>,
     py: Python,
 ) -> PyResult<Py<PyArray1<usize>>> {
     let chrs_slice = chrs.as_slice()?;
     let starts_slice = starts.as_slice()?;
     let ends_slice = ends.as_slice()?;
-    let idxs_slice = idxs.as_slice()?;
 
-    let indexes = sorts::sort_order_idx(chrs_slice, starts_slice, ends_slice, idxs_slice);
+    let indexes = sorts::sort_order_idx(chrs_slice, starts_slice, ends_slice);
     Ok(indexes.into_pyarray(py).to_owned().into())
 }
 
@@ -341,15 +339,14 @@ pub fn sort_intervals_numpy(
 // }
 
 #[pyfunction]
-#[pyo3(signature = (chrs, starts, ends, idxs, slack=0))]
+#[pyo3(signature = (chrs, starts, ends, slack=0))]
 pub fn cluster_numpy(
     chrs: PyReadonlyArray1<i64>,
     starts: PyReadonlyArray1<i64>,
     ends: PyReadonlyArray1<i64>,
-    idxs: PyReadonlyArray1<i64>,
     slack: i64,
     py: Python,
-) -> PyResult<(Py<PyArray1<usize>>, Py<PyArray1<usize>>)> {
+) -> PyResult<(Py<PyArray1<i64>>, Py<PyArray1<usize>>)> {
     let (cluster_ids, indices) = sweep_line_cluster(
         chrs.as_slice()?,
         starts.as_slice()?,
@@ -363,12 +360,11 @@ pub fn cluster_numpy(
 }
 
 #[pyfunction]
-#[pyo3(signature = (chrs, starts, ends, idxs, slack=0))]
+#[pyo3(signature = (chrs, starts, ends, slack=0))]
 pub fn merge_numpy(
     chrs: PyReadonlyArray1<i64>,
     starts: PyReadonlyArray1<i64>,
     ends: PyReadonlyArray1<i64>,
-    idxs: PyReadonlyArray1<i64>,
     slack: i64,
     py: Python,
 ) -> PyResult<(
@@ -381,7 +377,6 @@ pub fn merge_numpy(
         chrs.as_slice()?,
         starts.as_slice()?,
         ends.as_slice()?,
-        idxs.as_slice()?,
         slack,
     );
     Ok((
@@ -421,23 +416,21 @@ pub fn split_numpy(
 }
 
 #[pyfunction]
-#[pyo3(signature = (chrs, starts, ends, idxs, strand_flags, start, end = None, force_plus_strand = false))]
+#[pyo3(signature = (chrs, starts, ends, strand_flags, start, end = None, force_plus_strand = false))]
 pub fn spliced_subsequence_numpy(
     chrs: PyReadonlyArray1<i64>,
     starts: PyReadonlyArray1<i64>,
     ends: PyReadonlyArray1<i64>,
-    idxs: PyReadonlyArray1<i64>,
     strand_flags: PyReadonlyArray1<bool>,
     start: i64,
     end: Option<i64>,
     force_plus_strand: bool,
     py: Python,
-) -> PyResult<(Py<PyArray1<i64>>, Py<PyArray1<i64>>, Py<PyArray1<i64>>)> {
+) -> PyResult<(Py<PyArray1<usize>>, Py<PyArray1<i64>>, Py<PyArray1<i64>>)> {
     let (outidx, outstarts, outends) = spliced_subseq(
         chrs.as_slice()?,
         starts.as_slice()?,
         ends.as_slice()?,
-        idxs.as_slice()?,
         strand_flags.as_slice()?,
         start,
         end,

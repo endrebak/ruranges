@@ -4,7 +4,6 @@ pub fn sweep_line_merge(
     chrs: &[i64],
     starts: &[i64],
     ends: &[i64],
-    idxs: &[i64],
     slack: i64,
 ) -> (Vec<usize>, Vec<i64>, Vec<i64>, Vec<i64>) {
     let mut out_indices = Vec::with_capacity(chrs.len());

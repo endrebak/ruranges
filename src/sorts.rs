@@ -14,7 +14,6 @@ pub fn build_intervals(
     chrs: &[i64],
     starts: &[i64],
     ends: &[i64],
-    idxs: &[i64],
     slack: i64,
 ) -> Vec<Interval> {
     let mut intervals: Vec<Interval> = Vec::with_capacity(chrs.len());
@@ -34,7 +33,6 @@ pub fn build_subsequence_intervals(
     chrs: &[i64],
     starts: &[i64],
     ends: &[i64],
-    idxs: &[i64],
     strand_flags: &[bool],
 ) -> Vec<SplicedSubsequenceInterval> {
     let mut intervals: Vec<SplicedSubsequenceInterval> = Vec::with_capacity(chrs.len());
@@ -47,7 +45,7 @@ pub fn build_subsequence_intervals(
                 -starts[i]
             }, // so that negative strand intervals are sorted in the correct direction
             end: if strand_flags[i] { ends[i] } else { -ends[i] }, // we will find the absolute value when using them
-            idx: idxs[i],
+            idx: i,
             forward_strand: strand_flags[i],
             temp_cumsum: 0,
             temp_length: 0,
@@ -91,11 +89,10 @@ pub fn build_sorted_intervals(
     chrs: &[i64],
     starts: &[i64],
     ends: &[i64],
-    idxs: &[i64],
     slack: i64,
     sort_on_ends_too: bool,
 ) -> Vec<Interval> {
-    let mut intervals = build_intervals(chrs, starts, ends, idxs, slack);
+    let mut intervals = build_intervals(chrs, starts, ends, slack);
 
     if sort_on_ends_too {
         sort_by_key(&mut intervals, |i| i.end);
@@ -110,10 +107,9 @@ pub fn build_sorted_subsequence_intervals(
     chrs: &[i64],
     starts: &[i64],
     ends: &[i64],
-    idxs: &[i64],
     strand_flags: &[bool],
 ) -> Vec<SplicedSubsequenceInterval> {
-    let mut intervals = build_subsequence_intervals(chrs, starts, ends, idxs, strand_flags);
+    let mut intervals = build_subsequence_intervals(chrs, starts, ends, strand_flags);
 
     sort_by_key(&mut intervals, |i| i.end);
     sort_by_key(&mut intervals, |i| i.start);
@@ -140,8 +136,8 @@ pub fn build_sorted_sequence_intervals(
     intervals
 }
 
-pub fn sort_order_idx(chrs: &[i64], starts: &[i64], ends: &[i64], idxs: &[i64]) -> Vec<usize> {
-    build_sorted_intervals(chrs, starts, ends, idxs, 0, true)
+pub fn sort_order_idx(chrs: &[i64], starts: &[i64], ends: &[i64]) -> Vec<usize> {
+    build_sorted_intervals(chrs, starts, ends, 0, true)
         .iter()
         .map(|i| i.idx)
         .collect()

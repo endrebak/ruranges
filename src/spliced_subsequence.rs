@@ -18,12 +18,11 @@ pub fn spliced_subseq(
     chrs: &[i64],
     starts: &[i64],
     ends: &[i64],
-    idxs: &[i64],
     strand_flags: &[bool],
     start: i64,
     end: Option<i64>,
     force_plus_strand: bool,
-) -> (Vec<i64>, Vec<i64>, Vec<i64>) {
+) -> (Vec<usize>, Vec<i64>, Vec<i64>) {
     // If no intervals, just return.
     if chrs.is_empty() {
         return (Vec::new(), Vec::new(), Vec::new());
@@ -31,10 +30,10 @@ pub fn spliced_subseq(
 
     // Build the vector of intervals, which is already sorted by (chr, start, end) in your code.
     let intervals: Vec<SplicedSubsequenceInterval> =
-        build_sorted_subsequence_intervals(chrs, starts, ends, idxs, strand_flags);
+        build_sorted_subsequence_intervals(chrs, starts, ends, strand_flags);
 
     // We'll accumulate the results here.
-    let mut out_idxs: Vec<i64> = Vec::with_capacity(intervals.len());
+    let mut out_idxs: Vec<usize> = Vec::with_capacity(intervals.len());
     let mut out_starts: Vec<i64> = Vec::with_capacity(intervals.len());
     let mut out_ends: Vec<i64> = Vec::with_capacity(intervals.len());
 
@@ -51,7 +50,7 @@ pub fn spliced_subseq(
                           start: i64,
                           end: Option<i64>,
                           force_plus: bool,
-                          out_idxs: &mut Vec<i64>,
+                          out_idxs: &mut Vec<usize>,
                           out_starts: &mut Vec<i64>,
                           out_ends: &mut Vec<i64>| {
         if group.is_empty() {
