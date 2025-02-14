@@ -24,6 +24,7 @@ use crate::sorts::build_sorted_events_single_collection_separate_outputs;
 use crate::spliced_subsequence::spliced_subseq;
 use crate::split::sweep_line_split;
 use crate::subtract::sweep_line_subtract;
+use crate::tile::{tile, window};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum OverlapType {
@@ -360,6 +361,45 @@ pub fn cluster_numpy(
 }
 
 #[pyfunction]
+#[pyo3(signature = (starts, ends, tile_size))]
+pub fn tile_numpy(
+    starts: PyReadonlyArray1<i64>,
+    ends: PyReadonlyArray1<i64>,
+    tile_size: i64,
+    py: Python,
+) -> PyResult<(
+    Py<PyArray1<usize>>,
+    Py<PyArray1<i64>>,
+    Py<PyArray1<i64>>,
+    Py<PyArray1<f64>>,
+)> {
+    let (starts, ends, indices, overlap_fraction) =
+        tile(starts.as_slice()?, ends.as_slice()?, tile_size);
+    Ok((
+        indices.into_pyarray(py).to_owned().into(),
+        starts.into_pyarray(py).to_owned().into(),
+        ends.into_pyarray(py).to_owned().into(),
+        overlap_fraction.into_pyarray(py).to_owned().into(),
+    ))
+}
+
+#[pyfunction]
+#[pyo3(signature = (starts, ends, window_size))]
+pub fn window_numpy(
+    starts: PyReadonlyArray1<i64>,
+    ends: PyReadonlyArray1<i64>,
+    window_size: i64,
+    py: Python,
+) -> PyResult<(Py<PyArray1<usize>>, Py<PyArray1<i64>>, Py<PyArray1<i64>>)> {
+    let (starts, ends, indices) = window(starts.as_slice()?, ends.as_slice()?, window_size);
+    Ok((
+        indices.into_pyarray(py).to_owned().into(),
+        starts.into_pyarray(py).to_owned().into(),
+        ends.into_pyarray(py).to_owned().into(),
+    ))
+}
+
+#[pyfunction]
 #[pyo3(signature = (chrs, starts, ends, slack=0))]
 pub fn merge_numpy(
     chrs: PyReadonlyArray1<i64>,
@@ -396,11 +436,7 @@ pub fn split_numpy(
     slack: i64,
     between: bool,
     py: Python,
-) -> PyResult<(
-    Py<PyArray1<usize>>,
-    Py<PyArray1<i64>>,
-    Py<PyArray1<i64>>,
-)> {
+) -> PyResult<(Py<PyArray1<usize>>, Py<PyArray1<i64>>, Py<PyArray1<i64>>)> {
     let (indices, starts, ends) = sweep_line_split(
         chrs.as_slice()?,
         starts.as_slice()?,

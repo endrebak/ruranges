@@ -9,5 +9,6 @@ pub mod overlaps;
 pub mod ruranges_structs;
 pub mod sorts;
 pub mod spliced_subsequence;
-pub mod subtract;
 pub mod split;
+pub mod subtract;
+pub mod tile;

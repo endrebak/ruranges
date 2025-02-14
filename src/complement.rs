@@ -20,9 +20,7 @@ pub fn sweep_line_non_overlaps(
     }
 
     // Build up the event list in ascending order (same as before)
-    let events = sorts::build_sorted_events_idxs(
-        chrs, starts, ends, chrs2, starts2, ends2, slack,
-    );
+    let events = sorts::build_sorted_events_idxs(chrs, starts, ends, chrs2, starts2, ends2, slack);
 
     let mut overlapped = FxHashSet::default();
 

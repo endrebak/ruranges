@@ -10,12 +10,7 @@ use crate::ruranges_structs::MinEvent;
 use crate::ruranges_structs::SplicedSubsequenceInterval;
 use crate::ruranges_structs::SubsequenceInterval;
 
-pub fn build_intervals(
-    chrs: &[i64],
-    starts: &[i64],
-    ends: &[i64],
-    slack: i64,
-) -> Vec<Interval> {
+pub fn build_intervals(chrs: &[i64], starts: &[i64], ends: &[i64], slack: i64) -> Vec<Interval> {
     let mut intervals: Vec<Interval> = Vec::with_capacity(chrs.len());
     for i in 0..chrs.len() {
         intervals.push(Interval {

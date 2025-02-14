@@ -16,9 +16,7 @@ pub fn sweep_line_subtract(
     }
 
     // Build sorted events
-    let events = sorts::build_sorted_events_idxs(
-        chrs1, starts1, ends1, chrs2, starts2, ends2, 0,
-    );
+    let events = sorts::build_sorted_events_idxs(chrs1, starts1, ends1, chrs2, starts2, ends2, 0);
 
     // Output buffers
     let mut result_idxs = Vec::new();
