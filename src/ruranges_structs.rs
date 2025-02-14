@@ -3,7 +3,7 @@ pub struct Interval {
     pub group: i64,
     pub start: i64,
     pub end: i64,
-    pub idx: i64,
+    pub idx: usize,
 }
 
 #[derive(Debug, Clone, Hash)]
@@ -25,7 +25,7 @@ pub struct Event {
     pub pos: i64,
     pub is_start: bool,
     pub first_set: bool,
-    pub idx: i64,
+    pub idx: usize,
 }
 
 #[derive(Debug, Clone, Hash)]

@@ -23,7 +23,7 @@ pub fn build_intervals(
             group: chrs[i],
             start: starts[i] - slack,
             end: ends[i] + slack,
-            idx: idxs[i],
+            idx: i,
         });
     }
 
@@ -140,7 +140,7 @@ pub fn build_sorted_sequence_intervals(
     intervals
 }
 
-pub fn sort_order_idx(chrs: &[i64], starts: &[i64], ends: &[i64], idxs: &[i64]) -> Vec<i64> {
+pub fn sort_order_idx(chrs: &[i64], starts: &[i64], ends: &[i64], idxs: &[i64]) -> Vec<usize> {
     build_sorted_intervals(chrs, starts, ends, idxs, 0, true)
         .iter()
         .map(|i| i.idx)
@@ -209,7 +209,6 @@ pub fn align_interval_collections_on_chromosome(
 pub fn build_sorted_events_single_position(
     chrs: &[i64],
     pos: &[i64],
-    idxs: &[i64],
     start: bool,
     first_set: bool,
     negative_position: bool,
@@ -229,7 +228,7 @@ pub fn build_sorted_events_single_position(
             pos: if negative_position { -pos } else { pos },
             is_start: start,
             first_set: first_set,
-            idx: idxs[i],
+            idx: i,
         });
     }
 
@@ -242,7 +241,6 @@ pub fn build_sorted_events_single_collection(
     chrs: &[i64],
     starts: &[i64],
     ends: &[i64],
-    idxs: &[i64],
     slack: i64,
 ) -> Vec<Event> {
     let mut events: Vec<Event> = Vec::with_capacity(2 * (chrs.len()));
@@ -254,14 +252,14 @@ pub fn build_sorted_events_single_collection(
             pos: starts[i],
             is_start: true,
             first_set: true,
-            idx: idxs[i],
+            idx: i,
         });
         events.push(Event {
             chr: chrs[i],
             pos: ends[i] + slack,
             is_start: false,
             first_set: true,
-            idx: idxs[i],
+            idx: i,
         });
     }
 
@@ -443,11 +441,9 @@ pub fn build_sorted_events_idxs(
     chrs: &[i64],
     starts: &[i64],
     ends: &[i64],
-    idxs: &[i64],
     chrs2: &[i64],
     starts2: &[i64],
     ends2: &[i64],
-    idxs2: &[i64],
     slack: i64,
 ) -> Vec<Event> {
     let mut events: Vec<Event> = Vec::with_capacity(2 * (chrs.len() + chrs2.len()));
@@ -459,14 +455,14 @@ pub fn build_sorted_events_idxs(
             pos: starts[i] - slack,
             is_start: true,
             first_set: true,
-            idx: idxs[i],
+            idx: i,
         });
         events.push(Event {
             chr: chrs[i],
             pos: ends[i] + slack,
             is_start: false,
             first_set: true,
-            idx: idxs[i],
+            idx: i,
         });
     }
 
@@ -476,14 +472,14 @@ pub fn build_sorted_events_idxs(
             pos: starts2[j],
             is_start: true,
             first_set: false,
-            idx: idxs2[j],
+            idx: j,
         });
         events.push(Event {
             chr: chrs2[j],
             pos: ends2[j],
             is_start: false,
             first_set: false,
-            idx: idxs2[j],
+            idx: j,
         });
     }
 

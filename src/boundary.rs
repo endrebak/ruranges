@@ -6,8 +6,7 @@ pub fn sweep_line_boundary(
     chrs: &[i64],
     starts: &[i64],
     ends: &[i64],
-    idxs: &[i64],
-) -> (Vec<i64>, Vec<i64>, Vec<i64>, Vec<i64>) {
+) -> (Vec<usize>, Vec<i64>, Vec<i64>, Vec<i64>) {
     let mut out_indices = Vec::with_capacity(chrs.len());
     let mut out_starts = Vec::with_capacity(chrs.len());
     let mut out_ends = Vec::with_capacity(chrs.len());
@@ -17,7 +16,7 @@ pub fn sweep_line_boundary(
         return (out_indices, out_starts, out_ends, counts);
     };
 
-    let events = sorts::build_sorted_events_single_collection(chrs, starts, ends, idxs, 0);
+    let events = sorts::build_sorted_events_single_collection(chrs, starts, ends, 0);
 
     let mut current_chr: i64 = events.first().unwrap().chr;
     let mut current_start: i64 = events.first().unwrap().pos;

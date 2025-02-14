@@ -6,11 +6,10 @@ pub fn sweep_line_complement(
     chrs: &[i64],
     starts: &[i64],
     ends: &[i64],
-    idxs: &[i64],
     slack: i64,
     chrom_lens: &FxHashMap<i64, i64>,
     include_first_interval: bool, // <-- new parameter
-) -> (Vec<i64>, Vec<i64>, Vec<i64>, Vec<i64>) {
+) -> (Vec<i64>, Vec<i64>, Vec<i64>, Vec<usize>) {
     let mut out_chrs = Vec::with_capacity(chrs.len());
     let mut out_starts = Vec::with_capacity(chrs.len());
     let mut out_ends = Vec::with_capacity(chrs.len());
@@ -23,7 +22,7 @@ pub fn sweep_line_complement(
 
     // Build your events array, sorted by chr and pos
     let events: Vec<Event> =
-        sorts::build_sorted_events_single_collection(chrs, starts, ends, idxs, slack);
+        sorts::build_sorted_events_single_collection(chrs, starts, ends, slack);
 
     // Initialize
     let mut current_chr = events[0].chr;
@@ -32,7 +31,7 @@ pub fn sweep_line_complement(
     let mut in_complement = include_first_interval;
     // Start the first hole at position 0 of the chromosome (only matters if `in_complement == true`)
     let mut current_start = 0_i64;
-    let mut current_index = 0_i64;
+    let mut current_index = 0_usize;
 
     for e in events {
         // If we hit a new chromosome

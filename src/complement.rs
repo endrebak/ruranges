@@ -6,13 +6,11 @@ pub fn sweep_line_non_overlaps(
     chrs: &[i64],
     starts: &[i64],
     ends: &[i64],
-    idxs: &[i64],
     chrs2: &[i64],
     starts2: &[i64],
     ends2: &[i64],
-    idxs2: &[i64],
     slack: i64,
-) -> Vec<i64> {
+) -> Vec<usize> {
     let mut no_overlaps = Vec::new();
 
     // If either set is empty, none can overlap; return everything as “non-overlapping”.
@@ -23,7 +21,7 @@ pub fn sweep_line_non_overlaps(
 
     // Build up the event list in ascending order (same as before)
     let events = sorts::build_sorted_events_idxs(
-        chrs, starts, ends, idxs, chrs2, starts2, ends2, idxs2, slack,
+        chrs, starts, ends, chrs2, starts2, ends2, slack,
     );
 
     let mut overlapped = FxHashSet::default();

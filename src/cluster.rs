@@ -4,9 +4,8 @@ pub fn sweep_line_cluster(
     chrs: &[i64],
     starts: &[i64],
     ends: &[i64],
-    idxs: &[i64],
     slack: i64,
-) -> (Vec<i64>, Vec<i64>) {
+) -> (Vec<usize>, Vec<usize>) {
     let mut indices = Vec::with_capacity(chrs.len());
     let mut cluster_ids = Vec::with_capacity(chrs.len());
 
@@ -14,10 +13,10 @@ pub fn sweep_line_cluster(
         return (cluster_ids, indices);
     };
 
-    let events = sorts::build_sorted_events_single_collection(chrs, starts, ends, idxs, slack);
+    let events = sorts::build_sorted_events_single_collection(chrs, starts, ends, slack);
 
     let mut current_chr: i64 = events.first().unwrap().chr;
-    let mut current_cluster: i64 = 0;
+    let mut current_cluster: usize = 0;
     let mut active_intervals: i64 = 0;
 
     for e in events {

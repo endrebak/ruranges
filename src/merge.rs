@@ -6,7 +6,7 @@ pub fn sweep_line_merge(
     ends: &[i64],
     idxs: &[i64],
     slack: i64,
-) -> (Vec<i64>, Vec<i64>, Vec<i64>, Vec<i64>) {
+) -> (Vec<usize>, Vec<i64>, Vec<i64>, Vec<i64>) {
     let mut out_indices = Vec::with_capacity(chrs.len());
     let mut out_starts = Vec::with_capacity(chrs.len());
     let mut out_ends = Vec::with_capacity(chrs.len());
@@ -16,7 +16,7 @@ pub fn sweep_line_merge(
         return (out_indices, out_starts, out_ends, counts);
     };
 
-    let events = sorts::build_sorted_events_single_collection(chrs, starts, ends, idxs, slack);
+    let events = sorts::build_sorted_events_single_collection(chrs, starts, ends, slack);
 
     let mut current_chr: i64 = events.first().unwrap().chr;
     let mut current_start: i64 = 0;
@@ -43,7 +43,7 @@ pub fn sweep_line_merge(
             if active_count == 0 {
                 out_indices.push(e.idx);
                 out_starts.push(current_start);
-                out_ends.push(e.pos);
+                out_ends.push(e.pos - slack);
                 counts.push(current_cluster_count);
             }
         }

@@ -6,20 +6,18 @@ pub fn sweep_line_subtract(
     chrs1: &[i64],
     starts1: &[i64],
     ends1: &[i64],
-    idxs1: &[i64],
     chrs2: &[i64],
     starts2: &[i64],
     ends2: &[i64],
-    idxs2: &[i64],
-) -> (Vec<i64>, Vec<i64>, Vec<i64>) {
+) -> (Vec<usize>, Vec<i64>, Vec<i64>) {
     // If either set is empty, set1 is unchanged (or trivially subtracted).
     if chrs1.is_empty() || chrs2.is_empty() {
-        return (idxs1.to_vec(), starts1.to_vec(), ends1.to_vec());
+        return ((0..chrs1.len()).collect(), starts1.to_vec(), ends1.to_vec());
     }
 
     // Build sorted events
     let events = sorts::build_sorted_events_idxs(
-        chrs1, starts1, ends1, idxs1, chrs2, starts2, ends2, idxs2, 0,
+        chrs1, starts1, ends1, chrs2, starts2, ends2, 0,
     );
 
     // Output buffers
@@ -34,7 +32,7 @@ pub fn sweep_line_subtract(
     // we last started a "valid" sub-interval (when active2_count == 0).
     // i.e. active1[idx] = Some(position) means we are currently capturing
     // a sub-interval for that idx that started at `position`.
-    let mut active1: FxHashMap<i64, Option<i64>> = FxHashMap::default();
+    let mut active1: FxHashMap<usize, Option<i64>> = FxHashMap::default();
 
     let mut current_chr = events.first().unwrap().chr;
 

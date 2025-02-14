@@ -22,6 +22,7 @@ use crate::ruranges_structs::OverlapPair;
 use crate::sorts;
 use crate::sorts::build_sorted_events_single_collection_separate_outputs;
 use crate::spliced_subsequence::spliced_subseq;
+use crate::split::sweep_line_split;
 use crate::subtract::sweep_line_subtract;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -179,30 +180,24 @@ pub fn subtract_numpy(
     chrs: PyReadonlyArray1<i64>,
     starts: PyReadonlyArray1<i64>,
     ends: PyReadonlyArray1<i64>,
-    idxs: PyReadonlyArray1<i64>,
     chrs2: PyReadonlyArray1<i64>,
     starts2: PyReadonlyArray1<i64>,
     ends2: PyReadonlyArray1<i64>,
-    idxs2: PyReadonlyArray1<i64>,
-) -> PyResult<(Py<PyArray1<i64>>, Py<PyArray1<i64>>, Py<PyArray1<i64>>)> {
+) -> PyResult<(Py<PyArray1<usize>>, Py<PyArray1<i64>>, Py<PyArray1<i64>>)> {
     let chrs_slice = chrs.as_slice()?;
     let starts_slice = starts.as_slice()?;
     let ends_slice = ends.as_slice()?;
-    let idxs_slice = idxs.as_slice()?;
     let chrs_slice2 = chrs2.as_slice()?;
     let starts_slice2 = starts2.as_slice()?;
     let ends_slice2 = ends2.as_slice()?;
-    let idxs_slice2 = idxs2.as_slice()?;
 
     let result = sweep_line_subtract(
         chrs_slice,
         starts_slice,
         ends_slice,
-        idxs_slice,
         chrs_slice2,
         starts_slice2,
         ends_slice2,
-        idxs_slice2,
     );
     Ok((
         result.0.into_pyarray(py).to_owned().into(),
@@ -218,7 +213,7 @@ pub fn sort_intervals_numpy(
     ends: PyReadonlyArray1<i64>,
     idxs: PyReadonlyArray1<i64>,
     py: Python,
-) -> PyResult<Py<PyArray1<i64>>> {
+) -> PyResult<Py<PyArray1<usize>>> {
     let chrs_slice = chrs.as_slice()?;
     let starts_slice = starts.as_slice()?;
     let ends_slice = ends.as_slice()?;
@@ -354,12 +349,11 @@ pub fn cluster_numpy(
     idxs: PyReadonlyArray1<i64>,
     slack: i64,
     py: Python,
-) -> PyResult<(Py<PyArray1<i64>>, Py<PyArray1<i64>>)> {
+) -> PyResult<(Py<PyArray1<usize>>, Py<PyArray1<usize>>)> {
     let (cluster_ids, indices) = sweep_line_cluster(
         chrs.as_slice()?,
         starts.as_slice()?,
         ends.as_slice()?,
-        idxs.as_slice()?,
         slack,
     );
     Ok((
@@ -378,7 +372,7 @@ pub fn merge_numpy(
     slack: i64,
     py: Python,
 ) -> PyResult<(
-    Py<PyArray1<i64>>,
+    Py<PyArray1<usize>>,
     Py<PyArray1<i64>>,
     Py<PyArray1<i64>>,
     Py<PyArray1<i64>>,
@@ -395,6 +389,34 @@ pub fn merge_numpy(
         starts.into_pyarray(py).to_owned().into(),
         ends.into_pyarray(py).to_owned().into(),
         counts.into_pyarray(py).to_owned().into(),
+    ))
+}
+
+#[pyfunction]
+#[pyo3(signature = (chrs, starts, ends, slack=0, between=false))]
+pub fn split_numpy(
+    chrs: PyReadonlyArray1<i64>,
+    starts: PyReadonlyArray1<i64>,
+    ends: PyReadonlyArray1<i64>,
+    slack: i64,
+    between: bool,
+    py: Python,
+) -> PyResult<(
+    Py<PyArray1<usize>>,
+    Py<PyArray1<i64>>,
+    Py<PyArray1<i64>>,
+)> {
+    let (indices, starts, ends) = sweep_line_split(
+        chrs.as_slice()?,
+        starts.as_slice()?,
+        ends.as_slice()?,
+        slack,
+        between,
+    );
+    Ok((
+        indices.into_pyarray(py).to_owned().into(),
+        starts.into_pyarray(py).to_owned().into(),
+        ends.into_pyarray(py).to_owned().into(),
     ))
 }
 
@@ -457,31 +479,25 @@ pub fn complement_overlaps_numpy(
     chrs: PyReadonlyArray1<i64>,
     starts: PyReadonlyArray1<i64>,
     ends: PyReadonlyArray1<i64>,
-    idxs: PyReadonlyArray1<i64>,
     chrs2: PyReadonlyArray1<i64>,
     starts2: PyReadonlyArray1<i64>,
     ends2: PyReadonlyArray1<i64>,
-    idxs2: PyReadonlyArray1<i64>,
     slack: i64,
-) -> PyResult<Py<PyArray1<i64>>> {
+) -> PyResult<Py<PyArray1<usize>>> {
     let chrs_slice = chrs.as_slice()?;
     let starts_slice = starts.as_slice()?;
     let ends_slice = ends.as_slice()?;
-    let idxs_slice = idxs.as_slice()?;
     let chrs_slice2 = chrs2.as_slice()?;
     let starts_slice2 = starts2.as_slice()?;
     let ends_slice2 = ends2.as_slice()?;
-    let idxs_slice2 = idxs2.as_slice()?;
 
     let result = sweep_line_non_overlaps(
         chrs_slice,
         starts_slice,
         ends_slice,
-        idxs_slice,
         chrs_slice2,
         starts_slice2,
         ends_slice2,
-        idxs_slice2,
         slack,
     );
     Ok(result.into_pyarray(py).to_owned().into())
@@ -493,7 +509,6 @@ pub fn complement_numpy(
     chrs: PyReadonlyArray1<i64>,
     starts: PyReadonlyArray1<i64>,
     ends: PyReadonlyArray1<i64>,
-    idxs: PyReadonlyArray1<i64>,
     slack: i64,
     chrom_len_ids: PyReadonlyArray1<i64>,
     chrom_lens: PyReadonlyArray1<i64>,
@@ -502,12 +517,11 @@ pub fn complement_numpy(
     Py<PyArray1<i64>>,
     Py<PyArray1<i64>>,
     Py<PyArray1<i64>>,
-    Py<PyArray1<i64>>,
+    Py<PyArray1<usize>>,
 )> {
     let chrs_slice = chrs.as_slice()?;
     let starts_slice = starts.as_slice()?;
     let ends_slice = ends.as_slice()?;
-    let idxs_slice = idxs.as_slice()?;
 
     let keys = chrom_len_ids.as_slice()?;
     let vals = chrom_lens.as_slice()?;
@@ -526,7 +540,6 @@ pub fn complement_numpy(
         chrs_slice,
         starts_slice,
         ends_slice,
-        idxs_slice,
         slack,
         &lens_map,
         include_first_interval,
@@ -545,9 +558,8 @@ pub fn boundary_numpy(
     chrs: PyReadonlyArray1<i64>,
     starts: PyReadonlyArray1<i64>,
     ends: PyReadonlyArray1<i64>,
-    idxs: PyReadonlyArray1<i64>,
 ) -> PyResult<(
-    Py<PyArray1<i64>>,
+    Py<PyArray1<usize>>,
     Py<PyArray1<i64>>,
     Py<PyArray1<i64>>,
     Py<PyArray1<i64>>,
@@ -555,10 +567,9 @@ pub fn boundary_numpy(
     let chrs_slice = chrs.as_slice()?;
     let starts_slice = starts.as_slice()?;
     let ends_slice = ends.as_slice()?;
-    let idxs_slice = idxs.as_slice()?;
 
     let (outidxs, outstarts, outends, counts) =
-        sweep_line_boundary(chrs_slice, starts_slice, ends_slice, idxs_slice);
+        sweep_line_boundary(chrs_slice, starts_slice, ends_slice);
     Ok((
         outidxs.into_pyarray(py).to_owned().into(),
         outstarts.into_pyarray(py).to_owned().into(),
@@ -601,6 +612,7 @@ fn ruranges(m: &Bound<'_, PyModule>) -> PyResult<()> {
     //     m.add_function(wrap_pyfunction!(subsequence_numpy, m)?)?;
     m.add_function(wrap_pyfunction!(spliced_subsequence_numpy, m)?)?;
     m.add_function(wrap_pyfunction!(merge_numpy, m)?)?;
+    m.add_function(wrap_pyfunction!(split_numpy, m)?)?;
     // m.add_function(wrap_pyfunction!(nearest_next_intervals_numpy, m)?)?;
     // m.add_function(wrap_pyfunction!(nearest_previous_intervals_numpy, m)?)?;
     Ok(())

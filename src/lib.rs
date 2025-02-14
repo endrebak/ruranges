@@ -10,3 +10,4 @@ pub mod ruranges_structs;
 pub mod sorts;
 pub mod spliced_subsequence;
 pub mod subtract;
+pub mod split;
