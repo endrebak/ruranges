@@ -65,11 +65,8 @@ pub fn chromsweep_numpy(
     let ends_slice2 = ends2.as_slice()?;
 
     let overlap_type = OverlapType::from_str(overlap_type).unwrap();
-    println!("overlap type {:?}", overlap_type);
     let invert = overlap_type == OverlapType::Last;
 
-    // let result =
-    //     overlaps::sweep_line_overlaps(&sorted_starts, &sorted_ends, &sorted_starts2, &sorted_ends2);
     let result = if overlap_type == OverlapType::All && !contained {
         // The common, super-optimized case
         overlaps::sweep_line_overlaps(
@@ -93,18 +90,12 @@ pub fn chromsweep_numpy(
             let (sorted_starts2, sorted_ends2) =
                 overlaps::compute_sorted_events(chrs_slice2, starts_slice2, ends_slice2, 0, invert);
 
-            println!("{:?}", sorted_starts);
-            println!("{:?}", sorted_ends);
-            println!("{:?}", sorted_starts2);
-            println!("{:?}", sorted_ends2);
-
             let mut pairs = overlaps::sweep_line_overlaps_overlap_pair(
                 &sorted_starts,
                 &sorted_ends,
                 &sorted_starts2,
                 &sorted_ends2,
             );
-            println!("{:?}", pairs);
             keep_first_by_idx(&mut pairs);
             pairs.into_iter().map(|pair| (pair.idx, pair.idx2)).unzip()
         } else {

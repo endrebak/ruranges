@@ -54,7 +54,6 @@ pub fn sweep_line_overlaps(
     };
 
     let events = sorts::build_sorted_events(chrs, starts, ends, chrs2, starts2, ends2, slack);
-
     // Active sets
     let mut active1 = FxHashSet::default();
     let mut active2 = FxHashSet::default();
