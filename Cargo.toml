@@ -14,8 +14,11 @@ radsort = "0.1.1"
 rustc-hash = "2.1.0"
 numpy = "0.23"
 indexmap = "1.9"
+polars = { version = "0.46.0", features = ["csv"] }
+clap = { version = "4.5.29", features = ["derive"] }
 
-[profile.release]
-lto = true
-opt-level = 3
-codegen-units = 1
+
+# [profile.release]
+# lto = true
+# opt-level = 3
+# codegen-units = 1

@@ -361,10 +361,11 @@ pub fn cluster_numpy(
 }
 
 #[pyfunction]
-#[pyo3(signature = (starts, ends, tile_size))]
+#[pyo3(signature = (starts, ends, negative_strand, tile_size))]
 pub fn tile_numpy(
     starts: PyReadonlyArray1<i64>,
     ends: PyReadonlyArray1<i64>,
+    negative_strand: PyReadonlyArray1<bool>,
     tile_size: i64,
     py: Python,
 ) -> PyResult<(
@@ -374,7 +375,7 @@ pub fn tile_numpy(
     Py<PyArray1<f64>>,
 )> {
     let (starts, ends, indices, overlap_fraction) =
-        tile(starts.as_slice()?, ends.as_slice()?, tile_size);
+        tile(starts.as_slice()?, ends.as_slice()?, negative_strand.as_slice()?, tile_size);
     Ok((
         indices.into_pyarray(py).to_owned().into(),
         starts.into_pyarray(py).to_owned().into(),
@@ -384,14 +385,15 @@ pub fn tile_numpy(
 }
 
 #[pyfunction]
-#[pyo3(signature = (starts, ends, window_size))]
+#[pyo3(signature = (starts, ends, negative_strand, window_size))]
 pub fn window_numpy(
     starts: PyReadonlyArray1<i64>,
     ends: PyReadonlyArray1<i64>,
+    negative_strand: PyReadonlyArray1<bool>,
     window_size: i64,
     py: Python,
 ) -> PyResult<(Py<PyArray1<usize>>, Py<PyArray1<i64>>, Py<PyArray1<i64>>)> {
-    let (starts, ends, indices) = window(starts.as_slice()?, ends.as_slice()?, window_size);
+    let (starts, ends, indices) = window(starts.as_slice()?, ends.as_slice()?, negative_strand.as_slice()?, window_size);
     Ok((
         indices.into_pyarray(py).to_owned().into(),
         starts.into_pyarray(py).to_owned().into(),
@@ -607,6 +609,7 @@ pub fn boundary_numpy(
     ))
 }
 
+
 #[derive(Debug, PartialEq)]
 enum Direction {
     Forward,
@@ -632,6 +635,8 @@ fn ruranges(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(chromsweep_numpy, m)?)?;
     m.add_function(wrap_pyfunction!(complement_overlaps_numpy, m)?)?;
     m.add_function(wrap_pyfunction!(nearest_numpy, m)?)?;
+    m.add_function(wrap_pyfunction!(window_numpy, m)?)?;
+    m.add_function(wrap_pyfunction!(tile_numpy, m)?)?;
     m.add_function(wrap_pyfunction!(sort_intervals_numpy, m)?)?;
     // m.add_function(wrap_pyfunction!(nearest_intervals_unique_k_numpy, m)?)?;
     m.add_function(wrap_pyfunction!(cluster_numpy, m)?)?;

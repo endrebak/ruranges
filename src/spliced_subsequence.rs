@@ -29,8 +29,7 @@ pub fn spliced_subseq(
     }
 
     // Build the vector of intervals, which is already sorted by (chr, start, end) in your code.
-    let intervals: Vec<SplicedSubsequenceInterval> =
-        build_sorted_subsequence_intervals(chrs, starts, ends, strand_flags);
+    let intervals: Vec<SplicedSubsequenceInterval> = build_sorted_subsequence_intervals(chrs, starts, ends, strand_flags);
 
     // We'll accumulate the results here.
     let mut out_idxs: Vec<usize> = Vec::with_capacity(intervals.len());
