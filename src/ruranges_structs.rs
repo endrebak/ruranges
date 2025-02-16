@@ -30,33 +30,33 @@ pub struct Event {
 
 #[derive(Debug, Clone, Hash)]
 pub struct MaxEvent {
-    pub chr: i64,
+    pub chr: u32,
     pub pos: i64,
     pub start: i64,
     pub end: i64,
     pub is_start: bool,
     pub first_set: bool,
-    pub idx: usize,
+    pub idx: u32,
 }
 
 #[derive(Debug, Clone, Hash)]
 pub struct MinEvent {
-    pub chr: i64,
+    pub chr: u32,
     pub pos: i64,
-    pub idx: usize,
+    pub idx: u32,
 }
 
 #[derive(Debug, Clone, Hash)]
 pub struct OverlapPair {
-    pub idx: usize,
-    pub idx2: usize,
+    pub idx: u32,
+    pub idx2: u32,
 }
 
 #[derive(Debug, Clone, Hash)]
 pub struct Nearest {
     pub distance: i64,
-    pub idx: usize,
-    pub idx2: usize,
+    pub idx: u32,
+    pub idx2: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -89,4 +89,13 @@ pub struct SubsequenceInterval {
     pub end: i64,             // genomic end
     pub idx: i64,             // e.g. row index or something else
     pub forward_strand: bool, // true => + strand, false => - strand
+}
+
+
+pub struct GenericEvent<T> {
+    pub chr: u32,
+    pub pos: T,
+    pub is_start: bool,
+    pub first_set: bool,
+    pub idx: u32,
 }

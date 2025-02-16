@@ -204,17 +204,17 @@ impl FromStr for Direction {
 }
 
 pub fn nearest(
-    chrs: &[i64],
+    chrs: &[u32],
     starts: &[i64],
     ends: &[i64],
-    chrs2: &[i64],
+    chrs2: &[u32],
     starts2: &[i64],
     ends2: &[i64],
     slack: i64,
     k: usize,
     include_overlaps: bool,
     direction: &str,
-) -> (Vec<usize>, Vec<usize>, Vec<i64>) {
+) -> (Vec<u32>, Vec<u32>, Vec<i64>) {
     let dir = Direction::from_str(direction).unwrap();
 
     let sorted_starts = build_sorted_events_single_collection_separate_outputs(chrs, starts, slack);
@@ -262,7 +262,7 @@ pub fn merge_three_way_by_index_distance(
     nearest_left: &[Nearest],  // sorted by (idx, distance)
     nearest_right: &[Nearest], // sorted by (idx, distance)
     k: usize,
-) -> (Vec<usize>, Vec<usize>, Vec<i64>) {
+) -> (Vec<u32>, Vec<u32>, Vec<i64>) {
     // We'll return tuples: (idx, idx2, distance).
     // You can adapt if you want a custom struct instead.
     let mut idxs1 = Vec::new();

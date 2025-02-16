@@ -12,3 +12,4 @@ pub mod spliced_subsequence;
 pub mod split;
 pub mod subtract;
 pub mod tile;
+pub mod max_disjoint;

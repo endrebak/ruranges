@@ -1,4 +1,6 @@
-use indexmap::IndexSet;
+
+use std::hash::Hash;
+use num_traits::{PrimInt, Signed, Zero}; // You'll need the num-traits crate
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::ruranges_structs::{MaxEvent, MinEvent, OverlapPair};
@@ -36,15 +38,17 @@ impl WhichList {
 ///   3. Maintain active sets (for set1 and set2). For a start event in set1,
 ///      record overlap with all active in set2, then insert into active1. Etc.
 ///   4. Return the list of all cross-set overlaps.
-pub fn sweep_line_overlaps(
-    chrs: &[i64],
-    starts: &[i64],
-    ends: &[i64],
-    chrs2: &[i64],
-    starts2: &[i64],
-    ends2: &[i64],
-    slack: i64,
-) -> (Vec<usize>, Vec<usize>) {
+pub fn sweep_line_overlaps<T>(
+    chrs: &[u32],
+    starts: &[T],
+    ends: &[T],
+    chrs2: &[u32],
+    starts2: &[T],
+    ends2: &[T],
+    slack: T,
+) -> (Vec<u32>, Vec<u32>)
+ where
+    T: PrimInt + Signed + Hash + Copy + radsort::Key + Zero, {
     // We'll collect all cross overlaps here
     let mut overlaps = Vec::new();
     let mut overlaps2 = Vec::new();
@@ -58,7 +62,7 @@ pub fn sweep_line_overlaps(
     let mut active1 = FxHashSet::default();
     let mut active2 = FxHashSet::default();
 
-    let mut current_chr: i64 = events.first().unwrap().chr;
+    let mut current_chr: u32 = events.first().unwrap().chr;
 
     // Process events in ascending order of position
     for e in events {
@@ -101,17 +105,16 @@ pub fn sweep_line_overlaps(
 }
 
 pub fn sweep_line_overlaps_set1(
-    chrs: &[i64],
+    chrs: &[u32],
     starts: &[i64],
     ends: &[i64],
-    chrs2: &[i64],
+    chrs2: &[u32],
     starts2: &[i64],
     ends2: &[i64],
     slack: i64,
-) -> Vec<usize> {
+) -> Vec<u32> {
     // We'll collect all cross overlaps here
     let mut overlaps = Vec::new();
-    let mut overlaps2 = Vec::new();
 
     if chrs.is_empty() | chrs2.is_empty() {
         return overlaps;
@@ -123,7 +126,7 @@ pub fn sweep_line_overlaps_set1(
     let mut active1 = FxHashSet::default();
     let mut active2 = FxHashSet::default();
 
-    let mut current_chr: i64 = events.first().unwrap().chr;
+    let mut current_chr: u32 = events.first().unwrap().chr;
 
     // Process events in ascending order of position
     for e in events {
@@ -136,9 +139,8 @@ pub fn sweep_line_overlaps_set1(
             // Interval is starting
             if e.first_set {
                 // Overlaps with all currently active intervals in set2
-                for &idx2 in active2.iter() {
+                for &_idx2 in active2.iter() {
                     overlaps.push(e.idx);
-                    overlaps2.push(idx2);
                 }
                 // Now add it to active1
                 active1.insert(e.idx);
@@ -146,7 +148,6 @@ pub fn sweep_line_overlaps_set1(
                 // Overlaps with all currently active intervals in set1
                 for &idx1 in active1.iter() {
                     overlaps.push(idx1);
-                    overlaps2.push(e.idx);
                 }
                 // Now add it to active2
                 active2.insert(e.idx);
@@ -264,7 +265,7 @@ pub fn sweep_line_overlaps_containment(events: Vec<MaxEvent>) -> (Vec<OverlapPai
     let mut active1 = FxHashMap::default();
     let mut active2 = FxHashMap::default();
 
-    let mut current_chr: i64 = events.first().unwrap().chr;
+    let mut current_chr: u32 = events.first().unwrap().chr;
 
     // Process events in ascending order of position
     for e in events {
@@ -361,7 +362,7 @@ fn pick_winner_of_two_choose_first_if_equal<'a>(
 }
 
 pub fn compute_sorted_events(
-    chrs: &[i64],
+    chrs: &[u32],
     starts: &[i64],
     ends: &[i64],
     slack: i64,
@@ -387,10 +388,10 @@ pub fn compute_sorted_events(
 }
 
 pub fn compute_sorted_maxevents(
-    chrs: &[i64],
+    chrs: &[u32],
     starts: &[i64],
     ends: &[i64],
-    chrs2: &[i64],
+    chrs2: &[u32],
     starts2: &[i64],
     ends2: &[i64],
     slack: i64,

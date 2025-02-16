@@ -6,17 +6,21 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
 name = "ruranges"
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 pyo3 = "0.23.3"
 radsort = "0.1.1"
+arrow = "54.1.0"
 rustc-hash = "2.1.0"
 numpy = "0.23"
-indexmap = "1.9"
-polars = { version = "0.46.0", features = ["csv"] }
+num-traits = "0.2.19"
+polars = { version = "0.46.0", features = ["csv", "lazy", "dtype-categorical"] }
 clap = { version = "4.5.29", features = ["derive"] }
 
+[[bin]]
+name = "ruranges"
+path = "src/main.rs"
 
 # [profile.release]
 # lto = true

@@ -1,9 +1,13 @@
+use std::hash::Hash;
+use num_traits::{PrimInt, Signed, Zero}; // You'll need the num-traits crate
+
 use std::collections::HashMap;
 
 use radsort::sort_by_key;
 
 use crate::ruranges_structs::Event;
 use crate::ruranges_structs::EventUsize;
+use crate::ruranges_structs::GenericEvent;
 use crate::ruranges_structs::Interval;
 use crate::ruranges_structs::MaxEvent;
 use crate::ruranges_structs::MinEvent;
@@ -267,7 +271,7 @@ pub fn build_sorted_events_single_collection(
 }
 
 pub fn build_sorted_events_single_collection_separate_outputs(
-    chrs: &[i64],
+    chrs: &[u32],
     pos: &[i64],
     slack: i64,
 ) -> Vec<MinEvent> {
@@ -278,7 +282,7 @@ pub fn build_sorted_events_single_collection_separate_outputs(
         out_pos.push(MinEvent {
             chr: chrs[i],
             pos: pos[i] - slack,
-            idx: i,
+            idx: i as u32,
         });
     }
 
@@ -289,7 +293,7 @@ pub fn build_sorted_events_single_collection_separate_outputs(
 }
 
 pub fn build_sorted_events_with_starts_ends(
-    chrs: &[i64],
+    chrs: &[u32],
     pos: &[i64],
     slack: i64,
 ) -> Vec<MinEvent> {
@@ -300,7 +304,7 @@ pub fn build_sorted_events_with_starts_ends(
         out_pos.push(MinEvent {
             chr: chrs[i],
             pos: pos[i] - slack,
-            idx: i,
+            idx: i as u32,
         });
     }
 
@@ -310,53 +314,55 @@ pub fn build_sorted_events_with_starts_ends(
     out_pos
 }
 
-pub fn build_sorted_events(
-    chrs: &[i64],
-    starts: &[i64],
-    ends: &[i64],
-    chrs2: &[i64],
-    starts2: &[i64],
-    ends2: &[i64],
-    slack: i64,
-) -> Vec<EventUsize> {
-    let mut events: Vec<EventUsize> = Vec::with_capacity(2 * (chrs.len() + chrs2.len()));
+pub fn build_sorted_events<T>(
+    chrs: &[u32],
+    starts: &[T],
+    ends: &[T],
+    chrs2: &[u32],
+    starts2: &[T],
+    ends2: &[T],
+    slack: T,
+) -> Vec<GenericEvent<T>>
+where
+    T: PrimInt + Signed + Hash + Copy + radsort::Key + Zero, {
+    let mut events: Vec<GenericEvent<T>> = Vec::with_capacity(2 * (chrs.len() + chrs2.len()));
 
     // Convert set1 intervals into events
     for i in 0..chrs.len() {
-        events.push(EventUsize {
+        events.push(GenericEvent {
             chr: chrs[i],
             pos: if slack < starts[i] {
                 starts[i] - slack
             } else {
-                0
+                T::zero()
             },
             is_start: true,
             first_set: true,
-            idx: i,
+            idx: i as u32,
         });
-        events.push(EventUsize {
+        events.push(GenericEvent {
             chr: chrs[i],
             pos: ends[i].saturating_add(slack),
             is_start: false,
             first_set: true,
-            idx: i,
+            idx: i as u32,
         });
     }
 
     for j in 0..chrs2.len() {
-        events.push(EventUsize {
+        events.push(GenericEvent {
             chr: chrs2[j],
             pos: starts2[j],
             is_start: true,
             first_set: false,
-            idx: j,
+            idx: j as u32,
         });
-        events.push(EventUsize {
+        events.push(GenericEvent {
             chr: chrs2[j],
             pos: ends2[j],
             is_start: false,
             first_set: false,
-            idx: j,
+            idx: j as u32,
         });
     }
 
@@ -368,10 +374,10 @@ pub fn build_sorted_events(
 }
 
 pub fn build_sorted_maxevents_with_starts_ends(
-    chrs: &[i64],
+    chrs: &[u32],
     starts: &[i64],
     ends: &[i64],
-    chrs2: &[i64],
+    chrs2: &[u32],
     starts2: &[i64],
     ends2: &[i64],
     slack: i64,
@@ -387,7 +393,7 @@ pub fn build_sorted_maxevents_with_starts_ends(
             end: ends[i] + slack,
             is_start: true,
             first_set: true,
-            idx: i,
+            idx: i as u32,
         });
         events.push(MaxEvent {
             chr: chrs[i],
@@ -396,7 +402,7 @@ pub fn build_sorted_maxevents_with_starts_ends(
             start: starts[i] - slack,
             is_start: false,
             first_set: true,
-            idx: i,
+            idx: i as u32,
         });
     }
 
@@ -408,7 +414,7 @@ pub fn build_sorted_maxevents_with_starts_ends(
             end: ends2[i],
             is_start: true,
             first_set: false,
-            idx: i,
+            idx: i as u32,
         });
         events.push(MaxEvent {
             chr: chrs2[i],
@@ -417,7 +423,7 @@ pub fn build_sorted_maxevents_with_starts_ends(
             end: ends2[i],
             is_start: false,
             first_set: false,
-            idx: i,
+            idx: i as u32,
         });
     }
 

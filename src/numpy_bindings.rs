@@ -49,16 +49,16 @@ impl FromStr for OverlapType {
 #[pyfunction]
 pub fn chromsweep_numpy(
     py: Python,
-    chrs: PyReadonlyArray1<i64>,
+    chrs: PyReadonlyArray1<u32>,
     starts: PyReadonlyArray1<i64>,
     ends: PyReadonlyArray1<i64>,
-    chrs2: PyReadonlyArray1<i64>,
+    chrs2: PyReadonlyArray1<u32>,
     starts2: PyReadonlyArray1<i64>,
     ends2: PyReadonlyArray1<i64>,
     slack: i64,
     overlap_type: &str,
     contained: bool,
-) -> PyResult<(Py<PyArray1<usize>>, Py<PyArray1<usize>>)> {
+) -> PyResult<(Py<PyArray1<u32>>, Py<PyArray1<u32>>)> {
     let chrs_slice = chrs.as_slice()?;
     let starts_slice = starts.as_slice()?;
     let ends_slice = ends.as_slice()?;
@@ -137,17 +137,17 @@ fn keep_first_by_idx(pairs: &mut Vec<OverlapPair>) {
 #[pyo3(signature = (*, chrs, starts, ends, chrs2, starts2, ends2, slack=0, k=1, include_overlaps=true, direction="any"))]
 pub fn nearest_numpy(
     py: Python,
-    chrs: PyReadonlyArray1<i64>,
+    chrs: PyReadonlyArray1<u32>,
     starts: PyReadonlyArray1<i64>,
     ends: PyReadonlyArray1<i64>,
-    chrs2: PyReadonlyArray1<i64>,
+    chrs2: PyReadonlyArray1<u32>,
     starts2: PyReadonlyArray1<i64>,
     ends2: PyReadonlyArray1<i64>,
     slack: i64,
     k: usize,
     include_overlaps: bool,
     direction: &str,
-) -> PyResult<(Py<PyArray1<usize>>, Py<PyArray1<usize>>, Py<PyArray1<i64>>)> {
+) -> PyResult<(Py<PyArray1<u32>>, Py<PyArray1<u32>>, Py<PyArray1<i64>>)> {
     let chrs_slice = chrs.as_slice()?;
     let starts_slice = starts.as_slice()?;
     let ends_slice = ends.as_slice()?;
